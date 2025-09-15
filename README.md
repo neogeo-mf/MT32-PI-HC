@@ -36,7 +36,7 @@ The goal of this development is focused on features for musicians, and the focus
 - [I²S Hi-Fi DAC support][I²S Hi-Fi DACs].
   * This is the recommended audio output method for the best quality audio.
 
-- MIDI input, output and thru via [USB][USB MIDI interfaces], [GPIO][GPIO MIDI interface] MIDI interfaces, or the [serial port].
+- MIDI input, output and thru via TRS A MIDI interfaces, or Serial.
 
 - [Configuration file] for selecting hardware options and fine tuning.
 
