@@ -64,4 +64,4 @@ The goal of this development is focused on features for musicians, and the focus
 
 7. Connect your vintage PC's MIDI OUT to the Pi's MIDI IN and (optionally) vice versa.
 
-Device available here: https://hobbychop.etsy.com
+Device available here: https://hobbychop.com
