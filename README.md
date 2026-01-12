@@ -16,7 +16,12 @@
 
 ---
 
-## New features
+## New features 0.25.0
+
+- Midi Ch. Settings menu (press encoder knob)
+Change per channel MIDI settings, program, vol. mute, route directly on device.
+
+## New features 0.14.0
 
 - Encoder button press (once) displays the currently used soundfont file.
 
