@@ -120,7 +120,10 @@ CMT32Pi::CMT32Pi(CI2CMaster* pI2CMaster, CSPIMaster* pSPIMaster, CInterruptSyste
 	  m_nMasterVolume(100),
 	  m_pCurrentSynth(nullptr),
 	  m_pMT32Synth(nullptr),
-	  m_pSoundFontSynth(nullptr)
+	  m_pSoundFontSynth(nullptr),
+
+	  m_nButton1LastPressTime(0),
+	  m_nButton2LastPressTime(0)
 {
 	s_pThis = this;
 }
@@ -515,12 +518,6 @@ void CMT32Pi::UITask()
 	// Display current MT-32 ROM version/SoundFont
 	m_pCurrentSynth->ReportStatus();
 
-	if (m_bShowSleepAnimation)
-{
-    m_UserInterface.ShowCuteFaceAnimation(*m_pLCD);
-    m_bShowSleepAnimation = false;
-}
-
 	while (m_bRunning)
 	{
 		const unsigned int nTicks = CTimer::GetClockTicks();
@@ -528,8 +525,37 @@ void CMT32Pi::UITask()
 		// Update LCD
 		if (m_pLCD && (nTicks - m_nLCDUpdateTime) >= Utility::MillisToTicks(LCDUpdatePeriodMillis))
 		{
-			m_UserInterface.Update(*m_pLCD, *m_pCurrentSynth, nTicks);
+			m_UserInterface.UpdateWithMenu(*m_pLCD, *m_pCurrentSynth, m_Menu, nTicks);
 			m_nLCDUpdateTime = nTicks;
+		}
+
+		// Check if a program change needs to be sent from the menu
+		if (m_Menu.HasPendingProgramChange())
+		{
+			const u8 nChannel = m_Menu.GetPendingProgramChangeChannel();
+			const u8 nProgram = m_Menu.GetChannelProgram(nChannel);
+
+			// Send MIDI Program Change message (0xC0 + channel, program)
+			const u32 nProgramChangeMessage = 0xC0 | nChannel | (nProgram << 8);
+			if (m_pCurrentSynth)
+				m_pCurrentSynth->HandleMIDIShortMessage(nProgramChangeMessage);
+
+			m_Menu.ClearPendingProgramChange();
+		}
+
+		// Check if all programs need to be sent (e.g., after loading a preset)
+		if (m_Menu.NeedsAllProgramsSent())
+		{
+			if (m_pCurrentSynth)
+			{
+				for (u8 nChannel = 0; nChannel < 16; ++nChannel)
+				{
+					const u8 nProgram = m_Menu.GetChannelProgram(nChannel);
+					const u32 nProgramChangeMessage = 0xC0 | nChannel | (nProgram << 8);
+					m_pCurrentSynth->HandleMIDIShortMessage(nProgramChangeMessage);
+				}
+			}
+			m_Menu.ClearSendAllPrograms();
 		}
 
 		// Poll MiSTer interface
@@ -551,11 +577,6 @@ void CMT32Pi::UITask()
 			m_MisterControl.Update(Status);
 			m_nMisterUpdateTime = nTicks;
 		}
-		if (m_bShowSleepAnimation)
-{
-    m_UserInterface.ShowCuteFaceAnimation(*m_pLCD);
-    m_bShowSleepAnimation = false;
-}
 	}
 
 	// Clear screen
@@ -676,7 +697,12 @@ void CMT32Pi::OnShortMessage(u32 nMessage)
 	if ((nMessage & 0xFF) < 0xF0)
 		LEDOn();
 
-	m_pCurrentSynth->HandleMIDIShortMessage(nMessage);
+	// Apply menu-based MIDI channel filtering (mute, route, volume)
+	u32 nProcessedMessage = ProcessMIDIChannelFilter(nMessage);
+
+	// Only send if not filtered out (0 = muted)
+	if (nProcessedMessage != 0)
+		m_pCurrentSynth->HandleMIDIShortMessage(nProcessedMessage);
 
 	// Wake from power saving mode if necessary
 	Awaken();
@@ -1064,80 +1090,88 @@ void CMT32Pi::ProcessEventQueue()
 				break;
 
 			case TEventType::Encoder:
-				SetMasterVolume(m_nMasterVolume + Event.Encoder.nDelta);
+				// If menu is active, navigate through menu; otherwise adjust master volume
+				if (m_Menu.IsActive())
+					m_Menu.Navigate(Event.Encoder.nDelta);
+				else
+					SetMasterVolume(m_nMasterVolume + Event.Encoder.nDelta);
 				break;
 		}
 	}
 }
 void CMT32Pi::ProcessButtonEvent(const TButtonEvent& Event)
 {
-    const u32 now = CTimer::GetClockTicks();
-    const u32 lockoutDuration = Utility::MillisToTicks(1000);
-
-    // During animation lockout, ignore ALL button events
-    if (m_bShowSleepAnimation && (now - animationStartedAt < lockoutDuration))
-        return;
-
-    // Double click starts animation mode
-    if (Event.Button == TButton::EncoderButton && Event.bDoubleClick)
+    // Encoder button: Enter menu or toggle settings within menu
+    // CRITICAL: Filter out repeat events to prevent toggle loops when button is held
+    if (Event.Button == TButton::EncoderButton && Event.bPressed && !Event.bRepeat && !Event.bDoubleClick)
     {
-        m_bShowSleepAnimation = true;
-        animationStartedAt = now;
-        return;
-    }
-
-    // Cancel animation only after lockout
-    if (Event.bPressed && (!m_bShowSleepAnimation || (now - animationStartedAt >= lockoutDuration)))
-        m_bAbortSleepAnimation = true;
-
-    // Guard against any stray input during animation
-    if (m_bShowSleepAnimation)
-        return;
-
-    // Single click logic
-    if (Event.Button == TButton::EncoderButton && Event.bPressed)
-    {
-        if (m_pCurrentSynth == m_pSoundFontSynth)
-            m_UserInterface.ShowSystemMessage(m_pSoundFontSynth->GetCurrentSoundFontName());
+        if (!m_Menu.IsActive())
+        {
+            // Enter menu
+            m_Menu.EnterMenu();
+        }
         else
-            m_UserInterface.ShowSystemMessage("Not FluidSynth");
+        {
+            // In menu - toggle/select option
+            m_Menu.Select();
+        }
         return;
     }
 
 	if (!Event.bPressed)
-    return;
-	
-	// Handle other buttons
+		return;
+
+	// Debounce threshold for Button1 and Button2: 300ms
+	const unsigned nDebounceThresholdMs = 300;
+	const unsigned nCurrentTime = CTimer::GetClockTicks();
+
+	// Handle Button1 with debouncing (MT32/SoundFont toggle)
 	if (Event.Button == TButton::Button1 && !Event.bRepeat)
 	{
-		if (m_pCurrentSynth == m_pMT32Synth)
-			SwitchSynth(TSynth::SoundFont);
-		else
-			SwitchSynth(TSynth::MT32);
+		// Check if enough time has passed since last press
+		const unsigned nTimeSinceLastPress = nCurrentTime - m_nButton1LastPressTime;
+		if (nTimeSinceLastPress >= Utility::MillisToTicks(nDebounceThresholdMs))
+		{
+			m_nButton1LastPressTime = nCurrentTime;
+
+			if (m_pCurrentSynth == m_pMT32Synth)
+				SwitchSynth(TSynth::SoundFont);
+			else
+				SwitchSynth(TSynth::MT32);
+		}
 	}
+	// Handle Button2: Soundfont selection with debouncing
 	else if (Event.Button == TButton::Button2 && !Event.bRepeat)
 	{
-		if (m_pCurrentSynth == m_pMT32Synth)
-			NextMT32ROMSet();
-		else
+		// Handle soundfont selection with debouncing
+		// Check if enough time has passed since last press
+		const unsigned nTimeSinceLastPress = nCurrentTime - m_nButton2LastPressTime;
+		if (nTimeSinceLastPress >= Utility::MillisToTicks(nDebounceThresholdMs))
 		{
-			const size_t nSoundFonts = m_pSoundFontSynth->GetSoundFontManager().GetSoundFontCount();
-			if (!nSoundFonts)
-				LCDLog(TLCDLogType::Error, "No SoundFonts!");
+			m_nButton2LastPressTime = nCurrentTime;
+
+			if (m_pCurrentSynth == m_pMT32Synth)
+				NextMT32ROMSet();
 			else
 			{
-				size_t nNextSoundFont;
-				if (m_bDeferredSoundFontSwitchFlag)
-					nNextSoundFont = (m_nDeferredSoundFontSwitchIndex + 1) % nSoundFonts;
+				const size_t nSoundFonts = m_pSoundFontSynth->GetSoundFontManager().GetSoundFontCount();
+				if (!nSoundFonts)
+					LCDLog(TLCDLogType::Error, "No SoundFonts!");
 				else
 				{
-					const size_t nCurrentSoundFont = m_pSoundFontSynth->GetSoundFontIndex();
-					if (nCurrentSoundFont > nSoundFonts)
-						nNextSoundFont = 0;
+					size_t nNextSoundFont;
+					if (m_bDeferredSoundFontSwitchFlag)
+						nNextSoundFont = (m_nDeferredSoundFontSwitchIndex + 1) % nSoundFonts;
 					else
-						nNextSoundFont = (nCurrentSoundFont + 1) % nSoundFonts;
+					{
+						const size_t nCurrentSoundFont = m_pSoundFontSynth->GetSoundFontIndex();
+						if (nCurrentSoundFont > nSoundFonts)
+							nNextSoundFont = 0;
+						else
+							nNextSoundFont = (nCurrentSoundFont + 1) % nSoundFonts;
+					}
+					DeferSwitchSoundFont(nNextSoundFont);
 				}
-				DeferSwitchSoundFont(nNextSoundFont);
 			}
 		}
 	}
@@ -1151,6 +1185,56 @@ void CMT32Pi::ProcessButtonEvent(const TButtonEvent& Event)
 	}
 }
 
+u32 CMT32Pi::ProcessMIDIChannelFilter(u32 nMessage)
+{
+	// Extract status byte and channel
+	const u8 nStatus = nMessage & 0xFF;
+	const u8 nData1 = (nMessage >> 8) & 0xFF;
+	const u8 nData2 = (nMessage >> 16) & 0xFF;
+
+	// Only process channel messages (0x80-0xEF)
+	if (nStatus < 0x80 || nStatus >= 0xF0)
+		return nMessage;
+
+	// Extract the MIDI channel (0-15)
+	const u8 nChannel = nStatus & 0x0F;
+	const u8 nCommand = nStatus & 0xF0;
+
+	// Check if this channel is muted
+	if (m_Menu.IsChannelMuted(nChannel))
+		return 0;  // Mute: return 0 to filter out
+
+	// Get the routing for this channel
+	const u8 nRouteChannel = m_Menu.GetChannelRoute(nChannel);
+
+	// Apply channel volume for Note On and Note Off messages
+	u32 nProcessedMessage = nMessage;
+	if (nCommand == 0x90 || nCommand == 0x80)  // Note On or Note Off
+	{
+		// Apply channel volume scaling to velocity
+		const u8 nChannelVolume = m_Menu.GetChannelVolume(nChannel);
+		u8 nNewVelocity = (nData2 * nChannelVolume) / 127;
+
+		// Reconstruct message with new velocity
+		nProcessedMessage = (nStatus & 0xF0) | nRouteChannel | (nData1 << 8) | (nNewVelocity << 16);
+	}
+	else if (nCommand == 0xB0 && nData1 == 0x07)  // Volume CC (CC7)
+	{
+		// Apply channel volume scaling to CC7 volume
+		const u8 nChannelVolume = m_Menu.GetChannelVolume(nChannel);
+		u8 nNewVolume = (nData2 * nChannelVolume) / 127;
+
+		// Reconstruct message with new volume
+		nProcessedMessage = (nStatus & 0xF0) | nRouteChannel | (nData1 << 8) | (nNewVolume << 16);
+	}
+	else if (nRouteChannel != nChannel)
+	{
+		// Route to different channel (keep data bytes the same)
+		nProcessedMessage = (nCommand | nRouteChannel) | (nData1 << 8) | (nData2 << 16);
+	}
+
+	return nProcessedMessage;
+}
 
 void CMT32Pi::SwitchSynth(TSynth NewSynth)
 {

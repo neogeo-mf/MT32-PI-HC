@@ -59,6 +59,8 @@ public:
 	virtual void ClearPixel(u8 nX, u8 nY) override;
 	virtual void DrawFilledRect(u8 nX1, u8 nY1, u8 nX2, u8 nY2, bool bImmediate = false) override;
 	virtual void DrawChar(char chChar, u8 nCursorX, u8 nCursorY, bool bInverted = false, bool bDoubleWidth = false) override;
+	void DrawSmallChar(char chChar, u8 nX, u8 nY, bool bInverted = false);  // Single-height character at pixel position
+	void PrintSmall(const char* pText, u8 nX, u8 nY, bool bInverted = false);  // Single-height text at pixel position
 	virtual void DrawImage(TImage Image, bool bImmediate = false) override;
 	virtual void Flip() override;
 

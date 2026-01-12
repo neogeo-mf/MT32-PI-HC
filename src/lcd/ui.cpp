@@ -26,9 +26,15 @@
 #include <cstdio>
 
 #include "lcd/ui.h"
+
+// Forward declarations from animations.cpp
+extern size_t GetAnimationCount();
+extern const uint8_t* GetAnimationFrame(size_t animIndex, size_t frameIndex);
+extern size_t GetAnimationFrameCount(size_t animIndex);
 #include "synth/synthbase.h"
 #include "utility.h"
 #include "mt32pi.h"
+#include "menu.h"
 
 constexpr u32 ScrollDelayMillis = 1500;
 constexpr u32 ScrollRateMillis = 175;
@@ -45,7 +51,10 @@ CUserInterface::CUserInterface()
 	  m_SystemMessageTextBuffer{'\0'},
 	  m_SysExDisplayMessageType(TSysExDisplayMessage::Roland),
 	  m_SysExTextBuffer{'\0'},
-	  m_SysExPixelBuffer{0}
+	  m_SysExPixelBuffer{0},
+	  m_nAnimationFrameTime(0),
+	  m_nCurrentAnimationIndex(0),
+	  m_nCurrentFrameIndex(0)
 {
 }
 
@@ -141,6 +150,85 @@ void CUserInterface::Update(CLCD& LCD, CSynthBase& Synth, unsigned int nTicks)
 		Synth.UpdateLCD(LCD, nTicks);
 
 	LCD.Flip();
+}
+
+void CUserInterface::UpdateWithMenu(CLCD& LCD, CSynthBase& Synth, CMenu& Menu, unsigned int nTicks)
+{
+	// Update message scrolling
+	m_bIsScrolling = UpdateScroll(LCD, nTicks);
+
+	const unsigned int nDeltaTicks = nTicks - m_nStateTime;
+
+	// System message timeout
+	if (m_State == TState::DisplayingMessage && !m_bIsScrolling && nDeltaTicks >= Utility::MillisToTicks(SystemMessageDisplayTimeMillis))
+	{
+		m_State = TState::None;
+		m_nStateTime = nTicks;
+	}
+
+	// Spinner update
+	else if (m_State == TState::DisplayingSpinnerMessage && !m_bIsScrolling && nDeltaTicks >= Utility::MillisToTicks(SystemMessageSpinnerTimeMillis))
+	{
+		// TODO: API for getting width in pixels/characters for a string
+		const size_t nCharWidth = LCD.GetType() == CLCD::TType::Graphical ? 20 : LCD.Width();
+
+		m_nCurrentSpinnerChar = (m_nCurrentSpinnerChar + 1) % sizeof(SpinnerChars);
+		m_SystemMessageTextBuffer[nCharWidth - 2] = SpinnerChars[m_nCurrentSpinnerChar];
+		m_nStateTime = nTicks;
+	}
+
+	// Image display update
+	else if (m_State == TState::DisplayingImage && nDeltaTicks >= Utility::MillisToTicks(SystemMessageDisplayTimeMillis))
+	{
+		m_State = TState::None;
+		m_nStateTime = nTicks;
+	}
+
+	// SC-55 text timeout
+	else if ((m_State == TState::DisplayingSysExText && !m_bIsScrolling || m_State == TState::DisplayingSysExBitmap) && nDeltaTicks >= Utility::MillisToTicks(SC55DisplayTimeMillis))
+	{
+		m_State = TState::None;
+		m_nStateTime = nTicks;
+	}
+
+	// Power saving
+	else if (m_State == TState::EnteringPowerSavingMode && nDeltaTicks >= Utility::MillisToTicks(SystemMessageDisplayTimeMillis))
+	{
+		LCD.SetBacklightState(false);
+		m_State = TState::InPowerSavingMode;
+		m_nStateTime = nTicks;
+	}
+
+	// Re-enable backlight
+	if (m_State != TState::InPowerSavingMode && !LCD.GetBacklightState())
+		LCD.SetBacklightState(true);
+
+	// Power saving mode: no-op
+	if (m_State == TState::InPowerSavingMode)
+		return;
+
+	LCD.Clear(false);
+
+	// Draw menu if active and no system state overrides it
+	if (Menu.IsActive() && !DrawSystemState(LCD))
+		DrawMenu(LCD, Menu);
+	// Draw synth UI if no drawable system state and menu not active
+	else if (!DrawSystemState(LCD))
+	{
+		// Check visualization mode - show animation or bar graph
+		if (Menu.GetVisualizationMode() == CMenu::TVisualizationMode::Animation)
+			ShowAnimationFrame(LCD, nTicks);
+		else
+			Synth.UpdateLCD(LCD, nTicks);
+	}
+
+	LCD.Flip();
+}
+
+void CUserInterface::DrawMenu(CLCD& LCD, CMenu& Menu) const
+{
+	// Menu draws itself directly
+	Menu.Draw(LCD);
 }
 
 void CUserInterface::ShowSystemMessage(const char* pMessage, bool bSpinner)
@@ -456,4 +544,66 @@ void CUserInterface::DrawSysExBitmap(CLCD& LCD, u8 nFirstRow, u8 nRows) const
 void CUserInterface::ShowCuteFaceAnimation(CLCD& /*lcd*/)
 {
     CMT32Pi::SleepFaceThread(nullptr);
+}
+
+void CUserInterface::ShowAnimationFrame(CLCD& LCD, unsigned int nTicks)
+{
+	constexpr unsigned AnimationFrameDelayMillis = 200;
+
+	const size_t nAnimCount = GetAnimationCount();
+	if (nAnimCount == 0)
+		return;
+
+	// Update animation frame based on time
+	const unsigned nDeltaTicks = nTicks - m_nAnimationFrameTime;
+	if (nDeltaTicks >= Utility::MillisToTicks(AnimationFrameDelayMillis))
+	{
+		m_nAnimationFrameTime = nTicks;
+
+		// Get current animation frame count
+		const size_t nFrameCount = GetAnimationFrameCount(m_nCurrentAnimationIndex);
+		if (nFrameCount == 0)
+		{
+			// Try next animation
+			m_nCurrentAnimationIndex = (m_nCurrentAnimationIndex + 1) % nAnimCount;
+			m_nCurrentFrameIndex = 0;
+			return;
+		}
+
+		// Advance to next frame
+		m_nCurrentFrameIndex = (m_nCurrentFrameIndex + 1) % nFrameCount;
+	}
+
+	// Draw current frame
+	const uint8_t* pFrame = GetAnimationFrame(m_nCurrentAnimationIndex, m_nCurrentFrameIndex);
+	if (!pFrame)
+		return;
+
+	// Draw frame (similar to DrawFrame in animations.cpp but simplified)
+	for (int y = 0; y < 32; ++y)
+	{
+		for (int x = 0; x < 128; ++x)
+		{
+			if (!pFrame[y * 128 + x])
+			{
+				// Check if this pixel should be drawn (has neighbors)
+				int zeros = 0;
+				for (int yy = y - 1; yy <= y + 1; ++yy)
+				{
+					for (int xx = x - 1; xx <= x + 1; ++xx)
+					{
+						if (yy == y && xx == x) continue;
+						if (yy < 0 || yy >= 32 || xx < 0 || xx >= 128) continue;
+						if (!pFrame[yy * 128 + xx]) {
+							++zeros;
+							yy = y + 1;
+							break;
+						}
+					}
+				}
+				if (zeros > 0)
+					LCD.SetPixel(x, y);
+			}
+		}
+	}
 }

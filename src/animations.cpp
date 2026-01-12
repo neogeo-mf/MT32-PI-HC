@@ -134,6 +134,28 @@ static void ShowCuteFaceAnimation(CLCD *lcd, size_t animIndex, uint32_t totalDur
     }
 }
 
+// Public accessors for animation data
+size_t GetAnimationCount()
+{
+    if (kNumAnimations == 0)
+        LoadAllAnimations();
+    return kNumAnimations;
+}
+
+const uint8_t* GetAnimationFrame(size_t animIndex, size_t frameIndex)
+{
+    if (animIndex >= kNumAnimations || frameIndex >= animations[animIndex].frameCount)
+        return nullptr;
+    return animations[animIndex].frames[frameIndex];
+}
+
+size_t GetAnimationFrameCount(size_t animIndex)
+{
+    if (animIndex >= kNumAnimations)
+        return 0;
+    return animations[animIndex].frameCount;
+}
+
 int CMT32Pi::SleepFaceThread(void *)
 {
     CLCD *lcd = s_pThis->m_pLCD;

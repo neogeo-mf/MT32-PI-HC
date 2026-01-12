@@ -53,6 +53,7 @@
 #include "control/mister.h"
 #include "event.h"
 #include "lcd/ui.h"
+#include "menu.h"
 #include "midiparser.h"
 #include "net/applemidi.h"
 #include "net/ftpdaemon.h"
@@ -75,6 +76,7 @@ public:
 	bool Initialize(bool bSerialMIDIAvailable = true);
 	virtual void Run(unsigned nCore) override;
 	static CMT32Pi* GetInstance() { return s_pThis; }
+	CMenu& GetMenu() { return m_Menu; }
     bool IsSleepAnimationAborted() const { return m_bAbortSleepAnimation; }	
 	volatile bool m_bAbortSleepAnimation = false;
 	static CMT32Pi* s_pThis;
@@ -131,6 +133,7 @@ private:
 
 	void ProcessEventQueue();
 	void ProcessButtonEvent(const TButtonEvent& Event);
+	u32 ProcessMIDIChannelFilter(u32 nMessage);
 
 	// Actions that can be triggered via events
 	void SwitchSynth(TSynth Synth);
@@ -173,6 +176,7 @@ private:
 	CLCD* m_pLCD;
 	unsigned m_nLCDUpdateTime;
 	CUserInterface m_UserInterface;
+	CMenu m_Menu;
 #ifdef MONITOR_TEMPERATURE
 	unsigned m_nTempUpdateTime;
 #endif
@@ -222,6 +226,10 @@ private:
 
 	// Event handling
 	TEventQueue m_EventQueue;
+
+	// Button debouncing for Button1 and Button2
+	unsigned m_nButton1LastPressTime;
+	unsigned m_nButton2LastPressTime;
 
 	static void EventHandler(const TEvent& Event);
 	static void USBMIDIDeviceRemovedHandler(CDevice* pDevice, void* pContext);

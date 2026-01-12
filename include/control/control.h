@@ -74,6 +74,7 @@ class CControlSimpleEncoder : public CControl {
 		CRotaryEncoder m_Encoder;
 	
 		unsigned int m_LastEncoderClickTime = 0;
+		unsigned int m_LastEncoderRotationTime = 0;
 		bool m_EncoderWasPressed = false;
 	};
 

@@ -29,6 +29,7 @@
 #include "lcd/lcd.h"
 
 class CSynthBase;
+class CMenu;
 
 class CUserInterface
 {
@@ -42,7 +43,9 @@ public:
 	CUserInterface();
 
 	void Update(CLCD& LCD, CSynthBase& Synth, unsigned int nTicks);
+	void UpdateWithMenu(CLCD& LCD, CSynthBase& Synth, CMenu& Menu, unsigned int nTicks);
 	void ShowCuteFaceAnimation(CLCD& LCD);
+	void ShowAnimationFrame(CLCD& LCD, unsigned int nTicks);
 	void ShowSystemMessage(const char* pMessage, bool bSpinner = false);
 	void ClearSpinnerMessage();
 	void DisplayImage(TImage Image);
@@ -73,6 +76,7 @@ private:
 	bool DrawSystemState(CLCD& LCD) const;
 	void DrawSysExText(CLCD& LCD, u8 nFirstRow) const;
 	void DrawSysExBitmap(CLCD& LCD, u8 nFirstRow, u8 nRows) const;
+	void DrawMenu(CLCD& LCD, CMenu& Menu) const;
 
 	static void DrawChannelLevelsCharacter(CLCD& LCD, u8 nRows, u8 nBarOffsetX, u8 nBarYOffset, u8 nBarSpacing, const float* pChannelLevels, u8 nChannels, bool bDrawBarBases);
 	static void DrawChannelLevelsGraphical(CLCD& LCD, u8 nBarOffsetX, u8 nBarYOffset, u8 nBarWidth, u8 nBarHeight, u8 nBarSpacing, const float* pChannelLevels, const float* pPeakLevels, u8 nChannels, bool bDrawBarBases);
@@ -96,6 +100,11 @@ private:
 	TSysExDisplayMessage m_SysExDisplayMessageType;
 	char m_SysExTextBuffer[SyxExTextBufferSize];
 	u8 m_SysExPixelBuffer[SysExPixelBufferSize];
+
+	// Animation state
+	unsigned m_nAnimationFrameTime;
+	size_t m_nCurrentAnimationIndex;
+	size_t m_nCurrentFrameIndex;
 };
 
 #endif

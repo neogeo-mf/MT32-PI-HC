@@ -403,6 +403,61 @@ void CSSD1306::DrawImage(TImage Image, bool bImmediate)
 		WriteFrameBuffer(true);
 }
 
+void CSSD1306::DrawSmallChar(char chChar, u8 nX, u8 nY, bool bInverted)
+{
+	// Draw a single-height (8-pixel) character at pixel position (nX, nY)
+	u8* pFrameBuffer = m_FrameBuffers[m_nCurrentFrameBuffer].FrameBuffer;
+
+	// Clamp character to printable range
+	if (chChar == '\xFF')
+		chChar = '\x80';
+	else if (chChar < ' ')
+		chChar = ' ';
+
+	// Each character is 6 pixels wide, 8 pixels tall
+	for (u8 i = 0; i < 6; ++i)
+	{
+		if (nX + i >= m_nWidth)
+			break;
+
+		u8 nFontColumn = FontSingle[static_cast<u8>(chChar - ' ')][i];
+
+		// Invert if requested (including first column to avoid gaps)
+		if (bInverted)
+			nFontColumn ^= 0xFF;
+
+		// Calculate framebuffer offset
+		// The SSD1306 framebuffer is organized in pages (8-pixel rows)
+		// Each page is m_nWidth bytes
+		const size_t nPage = nY / 8;
+		const u8 nPageShift = nY % 8;
+		const size_t nOffset = nPage * m_nWidth + nX + i;
+
+		if (nPageShift == 0)
+		{
+			// Aligned to page boundary - simple write
+			pFrameBuffer[nOffset] = nFontColumn;
+		}
+		else
+		{
+			// Spans two pages - need to shift and mask
+			pFrameBuffer[nOffset] = (pFrameBuffer[nOffset] & ((1 << nPageShift) - 1)) | (nFontColumn << nPageShift);
+			if (nPage + 1 < m_nHeight / 8)
+				pFrameBuffer[nOffset + m_nWidth] = (pFrameBuffer[nOffset + m_nWidth] & ~((1 << nPageShift) - 1)) | (nFontColumn >> (8 - nPageShift));
+		}
+	}
+}
+
+void CSSD1306::PrintSmall(const char* pText, u8 nX, u8 nY, bool bInverted)
+{
+	// Draw string at pixel position using single-height font
+	while (*pText && nX < m_nWidth)
+	{
+		DrawSmallChar(*pText++, nX, nY, bInverted);
+		nX += 6;  // Character width
+	}
+}
+
 void CSSD1306::Print(const char* pText, u8 nCursorX, u8 nCursorY, bool bClearLine, bool bImmediate)
 {
 	if (bClearLine)

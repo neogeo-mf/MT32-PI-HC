@@ -18,6 +18,7 @@ OBJS		:=	src/config.o \
 			src/lcd/drivers/ssd1306.o \
 			src/lcd/ui.o \
 			src/main.o \
+			src/menu.o \
 			src/midimonitor.o \
 			src/midiparser.o \
 			src/mt32pi.o \

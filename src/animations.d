@@ -249,7 +249,7 @@ src/animations.o src/animations.d: src/animations.cpp \
  include/optional.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/new.h \
  include/control/mister.h include/control/misterstatus.h \
- include/synth/synth.h include/event.h include/lcd/ui.h \
+ include/synth/synth.h include/event.h include/lcd/ui.h include/menu.h \
  include/midiparser.h include/net/applemidi.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/net/socket.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/net/netsocket.h \
