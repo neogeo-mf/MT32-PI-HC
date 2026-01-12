@@ -21,12 +21,6 @@
 - Midi Ch. Settings menu (press encoder knob)
 Change per channel MIDI settings, program, vol. mute, route directly on device.
 
-## New features 0.14.0
-
-- Encoder button press (once) displays the currently used soundfont file.
-
-- Encoder button press (twice) displays animated pixel pet.
-
 ## Planned features
 
 - Make device remembers last used soundfont and will select it automatically upon device reboot, power loss, etc.
