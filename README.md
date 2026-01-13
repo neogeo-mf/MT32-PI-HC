@@ -16,11 +16,10 @@
 
 ---
 
-## New features
+## New features 0.25.0
 
-- Encoder button press (once) displays the currently used soundfont file.
-
-- Encoder button press (twice) displays animated pixel pet.
+- Midi Ch. Settings menu (press encoder knob)
+Change per channel MIDI settings, program, vol. mute, route directly on device.
 
 ## Planned features
 
