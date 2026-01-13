@@ -276,4 +276,6 @@ src/lcd/ui.o src/lcd/ui.d: src/lcd/ui.cpp \
  build-fluidsynth/include/fluidsynth/version.h \
  /home/ryan/MT32-PI-HC/external/fluidsynth/include/fluidsynth/ladspa.h \
  include/soundfontmanager.h include/synth/fxprofile.h \
- include/synth/fxprofile.h include/menu.h
+ include/synth/fxprofile.h include/menu.h \
+ include/lcd/animations/asteroids.h include/lcd/animations/matrixrain.h \
+ include/lcd/animations/oscilloscope.h include/lcd/drivers/ssd1306.h

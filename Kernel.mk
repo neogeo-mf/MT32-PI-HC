@@ -11,6 +11,9 @@ OBJS		:=	src/config.o \
 			src/control/simplebuttons.o \
 			src/control/simpleencoder.o \
 			src/kernel.o \
+			src/lcd/animations/asteroids.o \
+			src/lcd/animations/matrixrain.o \
+			src/lcd/animations/oscilloscope.o \
 			src/lcd/drivers/hd44780.o \
 			src/lcd/drivers/hd44780fourbit.o \
 			src/lcd/drivers/hd44780i2c.o \
@@ -38,6 +41,7 @@ OBJS		:=	src/config.o \
 EXTRACLEAN	+=	src/*.d src/*.o \
 			src/control/*.d src/control/*.o \
 			src/lcd/*.d src/lcd/*.o \
+			src/lcd/animations/*.d src/lcd/animations/*.o \
 			src/lcd/drivers/*.d src/lcd/drivers/*.o \
 			src/net/*.d src/net/*.o \
 			src/synth/*.d src/synth/*.o

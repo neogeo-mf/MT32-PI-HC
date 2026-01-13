@@ -35,6 +35,10 @@ extern size_t GetAnimationFrameCount(size_t animIndex);
 #include "utility.h"
 #include "mt32pi.h"
 #include "menu.h"
+#include "lcd/animations/asteroids.h"
+#include "lcd/animations/matrixrain.h"
+#include "lcd/animations/oscilloscope.h"
+#include "lcd/drivers/ssd1306.h"
 
 constexpr u32 ScrollDelayMillis = 1500;
 constexpr u32 ScrollRateMillis = 175;
@@ -54,7 +58,10 @@ CUserInterface::CUserInterface()
 	  m_SysExPixelBuffer{0},
 	  m_nAnimationFrameTime(0),
 	  m_nCurrentAnimationIndex(0),
-	  m_nCurrentFrameIndex(0)
+	  m_nCurrentFrameIndex(0),
+	  m_pAsteroids(new CAsteroids()),
+	  m_pMatrixRain(new CMatrixRain()),
+	  m_pOscilloscope(new COscilloscope())
 {
 }
 
@@ -215,11 +222,47 @@ void CUserInterface::UpdateWithMenu(CLCD& LCD, CSynthBase& Synth, CMenu& Menu, u
 	// Draw synth UI if no drawable system state and menu not active
 	else if (!DrawSystemState(LCD))
 	{
-		// Check visualization mode - show animation or bar graph
-		if (Menu.GetVisualizationMode() == CMenu::TVisualizationMode::Animation)
-			ShowAnimationFrame(LCD, nTicks);
-		else
-			Synth.UpdateLCD(LCD, nTicks);
+		// Check visualization mode
+		CMenu::TVisualizationMode mode = Menu.GetVisualizationMode();
+
+		switch (mode)
+		{
+			case CMenu::TVisualizationMode::Animation:
+				ShowAnimationFrame(LCD, nTicks);
+				break;
+
+			case CMenu::TVisualizationMode::Asteroids:
+				if (LCD.GetType() == CLCD::TType::Graphical)
+				{
+					CSSD1306& OLED = static_cast<CSSD1306&>(LCD);
+					m_pAsteroids->Update(nTicks);
+					m_pAsteroids->Draw(OLED);
+				}
+				break;
+
+			case CMenu::TVisualizationMode::MatrixRain:
+				if (LCD.GetType() == CLCD::TType::Graphical)
+				{
+					CSSD1306& OLED = static_cast<CSSD1306&>(LCD);
+					m_pMatrixRain->Update(nTicks);
+					m_pMatrixRain->Draw(OLED);
+				}
+				break;
+
+			case CMenu::TVisualizationMode::Oscilloscope:
+				if (LCD.GetType() == CLCD::TType::Graphical)
+				{
+					CSSD1306& OLED = static_cast<CSSD1306&>(LCD);
+					m_pOscilloscope->Update(nTicks);
+					m_pOscilloscope->Draw(OLED);
+				}
+				break;
+
+			case CMenu::TVisualizationMode::BarGraph:
+			default:
+				Synth.UpdateLCD(LCD, nTicks);
+				break;
+		}
 	}
 
 	LCD.Flip();
@@ -309,6 +352,37 @@ void CUserInterface::EnterPowerSavingMode()
 void CUserInterface::ExitPowerSavingMode()
 {
 	m_State = TState::None;
+}
+
+void CUserInterface::HandleMIDINote(u8 nNote, u8 nVelocity, u8 nChannel, CMenu& Menu)
+{
+	// Only process note-on events (velocity > 0)
+	if (nVelocity == 0)
+		return;
+
+	// Get current visualization mode
+	CMenu::TVisualizationMode mode = Menu.GetVisualizationMode();
+
+	// Pass note to appropriate visualization
+	switch (mode)
+	{
+		case CMenu::TVisualizationMode::Asteroids:
+			m_pAsteroids->HandleMidiNote(nNote, nVelocity);
+			break;
+
+		case CMenu::TVisualizationMode::MatrixRain:
+			m_pMatrixRain->HandleMidiNote(nNote, nVelocity);
+			break;
+
+		case CMenu::TVisualizationMode::Oscilloscope:
+			// Oscilloscope uses channel parameter
+			m_pOscilloscope->HandleMidiNote(nNote, nVelocity, nChannel);
+			break;
+
+		default:
+			// Other modes don't respond to MIDI
+			break;
+	}
 }
 
 u8 CUserInterface::CenterMessageOffset(CLCD& LCD, const char* pMessage)

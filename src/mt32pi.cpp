@@ -697,6 +697,20 @@ void CMT32Pi::OnShortMessage(u32 nMessage)
 	if ((nMessage & 0xFF) < 0xF0)
 		LEDOn();
 
+	// Extract MIDI message components for visualization
+	u8 nStatus = nMessage & 0xFF;
+	u8 nData1 = (nMessage >> 8) & 0xFF;
+	u8 nData2 = (nMessage >> 16) & 0xFF;
+	u8 nChannel = nStatus & 0x0F;
+	u8 nCommand = nStatus & 0xF0;
+
+	// Send note events to visualizations (before filtering)
+	if (nCommand == 0x90 && nData2 > 0)  // Note On with velocity > 0
+	{
+		if (m_pLCD)
+			m_UserInterface.HandleMIDINote(nData1, nData2, nChannel, m_Menu);
+	}
+
 	// Apply menu-based MIDI channel filtering (mute, route, volume)
 	u32 nProcessedMessage = ProcessMIDIChannelFilter(nMessage);
 

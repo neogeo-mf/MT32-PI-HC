@@ -30,6 +30,9 @@
 
 class CSynthBase;
 class CMenu;
+class CAsteroids;
+class CMatrixRain;
+class COscilloscope;
 
 class CUserInterface
 {
@@ -53,6 +56,7 @@ public:
 	void ShowSysExBitmap(TSysExDisplayMessage Type, const u8* pData, size_t nSize);
 	void EnterPowerSavingMode();
 	void ExitPowerSavingMode();
+	void HandleMIDINote(u8 nNote, u8 nVelocity, u8 nChannel, CMenu& Menu);
 
 	bool IsScrolling() const { return m_bIsScrolling; }
 
@@ -105,6 +109,11 @@ private:
 	unsigned m_nAnimationFrameTime;
 	size_t m_nCurrentAnimationIndex;
 	size_t m_nCurrentFrameIndex;
+
+	// Visualization objects (pointers to avoid circular dependencies)
+	CAsteroids* m_pAsteroids;
+	CMatrixRain* m_pMatrixRain;
+	COscilloscope* m_pOscilloscope;
 };
 
 #endif

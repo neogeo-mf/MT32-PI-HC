@@ -823,7 +823,28 @@ void CMenu::DrawAnimSettings(CLCD& LCD) const
 		// Row 1: Mode
 		OLED.PrintSmall("Mode:", 0, y1, false);
 		bool modeSelected = (m_AnimSettingsOption == TAnimSettingsOption::Mode);
-		const char* modeStr = (m_VisualizationMode == TVisualizationMode::BarGraph) ? "Bar Graph" : "Animation";
+		const char* modeStr = "Bar Graph";
+		switch (m_VisualizationMode)
+		{
+			case TVisualizationMode::BarGraph:
+				modeStr = "Bar Graph";
+				break;
+			case TVisualizationMode::Animation:
+				modeStr = "Animation";
+				break;
+			case TVisualizationMode::Asteroids:
+				modeStr = "Asteroids";
+				break;
+			case TVisualizationMode::MatrixRain:
+				modeStr = "Matrix Rain";
+				break;
+			case TVisualizationMode::Oscilloscope:
+				modeStr = "Oscilloscope";
+				break;
+			default:
+				modeStr = "Unknown";
+				break;
+		}
 
 		if (modeSelected)
 		{
@@ -871,7 +892,28 @@ void CMenu::DrawAnimSettings(CLCD& LCD) const
 		{
 			case TAnimSettingsOption::Mode:
 			{
-				const char* modeStr = (m_VisualizationMode == TVisualizationMode::BarGraph) ? "Bar Graph" : "Animation";
+				const char* modeStr = "Bar Graph";
+				switch (m_VisualizationMode)
+				{
+					case TVisualizationMode::BarGraph:
+						modeStr = "Bar Graph";
+						break;
+					case TVisualizationMode::Animation:
+						modeStr = "Animation";
+						break;
+					case TVisualizationMode::Asteroids:
+						modeStr = "Asteroids";
+						break;
+					case TVisualizationMode::MatrixRain:
+						modeStr = "Matrix Rain";
+						break;
+					case TVisualizationMode::Oscilloscope:
+						modeStr = "Oscilloscope";
+						break;
+					default:
+						modeStr = "Unknown";
+						break;
+				}
 				snprintf(line1, sizeof(line1), "Viz Mode");
 				snprintf(line2, sizeof(line2), "%s", modeStr);
 				break;
