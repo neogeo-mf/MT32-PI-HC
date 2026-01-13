@@ -153,11 +153,18 @@ src/menu.o src/menu.d: src/menu.cpp include/menu.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/util.h \
  include/synth/mt32romset.h include/synth/synthbase.h include/lcd/ui.h \
  include/lcd/barchars.h include/midimonitor.h include/utility.h \
+ include/config.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/net/ipaddress.h \
+ include/control/rotaryencoder.h include/lcd/drivers/ssd1306.h \
+ include/synth/mt32synth.h include/config.def \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/timer.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/interrupt.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/bcm2835int.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/exceptionstub.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/ptrlist.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/logger.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/device.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/time.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/addon/fatfs/ff.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/addon/fatfs/ffconf.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/algorithm \

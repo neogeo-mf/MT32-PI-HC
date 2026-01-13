@@ -27,6 +27,30 @@ src/synth/soundfontsynth.o src/synth/soundfontsynth.d: \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/synchronize.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/synchronize64.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/time.h \
+ /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cstdio \
+ /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/aarch64-none-elf/bits/c++config.h \
+ /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/aarch64-none-elf/bits/os_defines.h \
+ /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/aarch64-none-elf/bits/cpu_defines.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/stdio.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/_ansi.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/newlib.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/config.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/machine/ieeefp.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/cdefs.h \
+ /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/lib/gcc/aarch64-none-elf/11.3.1/include/stddef.h \
+ /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/lib/gcc/aarch64-none-elf/11.3.1/include/stdarg.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/reent.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/_ansi.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/_types.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/machine/_types.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/lock.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/types.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/_pthreadtypes.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/machine/types.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/stdio.h \
+ /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cstring \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/string.h \
+ /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/string.h \
  include/config.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/libs/circle/include/circle/net/ipaddress.h \
  include/control/rotaryencoder.h \
@@ -40,10 +64,6 @@ src/synth/soundfontsynth.o src/synth/soundfontsynth.d: \
  build-munt/include/mt32emu/globals.h build-munt/include/mt32emu/Types.h \
  build-munt/include/mt32emu/File.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cstddef \
- /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/aarch64-none-elf/bits/c++config.h \
- /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/aarch64-none-elf/bits/os_defines.h \
- /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/aarch64-none-elf/bits/cpu_defines.h \
- /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/lib/gcc/aarch64-none-elf/11.3.1/include/stddef.h \
  build-munt/include/mt32emu/FileStream.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/fstream \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/istream \
@@ -54,16 +74,6 @@ src/synth/soundfontsynth.o src/synth/soundfontsynth.d: \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/bits/postypes.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cwchar \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/wchar.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/_ansi.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/newlib.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/config.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/machine/ieeefp.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/reent.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/_types.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/machine/_types.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/lock.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/cdefs.h \
- /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/lib/gcc/aarch64-none-elf/11.3.1/include/stdarg.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/exception \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/bits/exception.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/bits/exception_ptr.h \
@@ -95,7 +105,6 @@ src/synth/soundfontsynth.o src/synth/soundfontsynth.d: \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/aarch64-none-elf/bits/c++locale.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/clocale \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/locale.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/_ansi.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cctype \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/ctype.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/bits/ios_base.h \
@@ -124,12 +133,6 @@ src/synth/soundfontsynth.o src/synth/soundfontsynth.d: \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/_ansi.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/machine/stdlib.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/bits/std_abs.h \
- /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cstdio \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/stdio.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/types.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/_pthreadtypes.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/machine/types.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/stdio.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cerrno \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/errno.h \
  /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/errno.h \
@@ -160,9 +163,6 @@ src/synth/soundfontsynth.o src/synth/soundfontsynth.d: \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/bits/fstream.tcc \
  build-munt/include/mt32emu/ROMInfo.h build-munt/include/mt32emu/Synth.h \
  /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cstdarg \
- /home/ryan/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-elf/aarch64-none-elf/include/c++/11.3.1/cstring \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/string.h \
- /home/ryan/MT32-PI-HC/external/circle-stdlib/install/aarch64-none-circle/include/sys/string.h \
  build-munt/include/mt32emu/Enumerations.h \
  build-munt/include/mt32emu/MidiStreamParser.h \
  build-munt/include/mt32emu/SampleRateConverter.h include/rommanager.h \

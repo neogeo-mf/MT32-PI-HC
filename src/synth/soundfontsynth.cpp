@@ -23,6 +23,8 @@
 #include <fatfs/ff.h>
 #include <circle/logger.h>
 #include <circle/timer.h>
+#include <cstdio>
+#include <cstring>
 
 #include "config.h"
 #include "lcd/ui.h"
@@ -138,15 +140,27 @@ bool CSoundFontSynth::Initialize()
 	if (!m_SoundFontManager.ScanSoundFonts())
 		return false;
 
-	// Try to get preferred SoundFont
-	m_nCurrentSoundFontIndex = pConfig->FluidSynthSoundFont;
-	const char* pSoundFontPath = m_SoundFontManager.GetSoundFontPath(m_nCurrentSoundFontIndex);
+	// Try to load last used SoundFont from persistent storage
+	size_t nSavedIndex = LoadSoundFontIndex();
+	const char* pSoundFontPath = m_SoundFontManager.GetSoundFontPath(nSavedIndex);
 
-	// Fall back on first available SoundFont
-	if (!pSoundFontPath)
+	// If saved index is valid, use it
+	if (pSoundFontPath)
 	{
-		pSoundFontPath = m_SoundFontManager.GetFirstValidSoundFontPath();
-		m_nCurrentSoundFontIndex = 0;
+		m_nCurrentSoundFontIndex = nSavedIndex;
+	}
+	else
+	{
+		// Fall back to config preference
+		m_nCurrentSoundFontIndex = pConfig->FluidSynthSoundFont;
+		pSoundFontPath = m_SoundFontManager.GetSoundFontPath(m_nCurrentSoundFontIndex);
+
+		// Fall back on first available SoundFont
+		if (!pSoundFontPath)
+		{
+			pSoundFontPath = m_SoundFontManager.GetFirstValidSoundFontPath();
+			m_nCurrentSoundFontIndex = 0;
+		}
 	}
 
 	// Give up
@@ -348,7 +362,71 @@ bool CSoundFontSynth::SwitchSoundFont(size_t nIndex)
 	if (m_pUI)
 		m_pUI->ClearSpinnerMessage();
 
+	// Save the new SoundFont index to persistent storage
+	SaveSoundFontIndex();
+
 	return true;
+}
+
+void CSoundFontSynth::SaveSoundFontIndex()
+{
+	// Save to a separate state file
+	FIL File;
+	FRESULT res = f_open(&File, "SD:/soundfont_state.cfg", FA_WRITE | FA_CREATE_ALWAYS);
+	if (res != FR_OK)
+	{
+		LOGWARN("Failed to save SoundFont index, f_open returned %d", res);
+		return;
+	}
+
+	char buffer[32];
+	snprintf(buffer, sizeof(buffer), "%u\n", (unsigned int)m_nCurrentSoundFontIndex);
+
+	UINT bytesWritten;
+	res = f_write(&File, buffer, strlen(buffer), &bytesWritten);
+	if (res == FR_OK)
+		res = f_sync(&File);  // Ensure data is flushed to disk
+	f_close(&File);
+
+	if (res == FR_OK)
+		LOGNOTE("Saved SoundFont index %u to state file", (unsigned int)m_nCurrentSoundFontIndex);
+	else
+		LOGWARN("Failed to write SoundFont index, f_write returned %d", res);
+}
+
+size_t CSoundFontSynth::LoadSoundFontIndex()
+{
+	// Try to load from state file
+	FIL File;
+	FRESULT res = f_open(&File, "SD:/soundfont_state.cfg", FA_READ);
+	if (res == FR_OK)
+	{
+		char buffer[32];
+		UINT bytesRead;
+		if (f_read(&File, buffer, sizeof(buffer) - 1, &bytesRead) == FR_OK && bytesRead > 0)
+		{
+			buffer[bytesRead] = '\0';
+
+			// Parse the index
+			unsigned int nIndex = 0;
+			if (sscanf(buffer, "%u", &nIndex) == 1)
+			{
+				f_close(&File);
+				LOGNOTE("Loaded SoundFont index %u from state file", nIndex);
+				return (size_t)nIndex;
+			}
+		}
+
+		f_close(&File);
+	}
+	else
+	{
+		LOGWARN("SoundFont state file not found, f_open returned %d", res);
+	}
+
+	// Return 0 (default) if file doesn't exist or parse failed
+	LOGNOTE("Using default SoundFont index 0");
+	return 0;
 }
 
 bool CSoundFontSynth::Reinitialize(const char* pSoundFontPath, const TFXProfile* pFXProfile)

@@ -309,6 +309,9 @@ bool CMT32Pi::Initialize(bool bSerialMIDIAvailable)
 	CCPUThrottle::Get()->DumpStatus();
 	SetPowerSaveTimeout(m_pConfig->SystemPowerSaveTimeout);
 
+	// Load saved visualization mode from SD card
+	m_Menu.LoadVisualizationMode();
+
 	// Clear LCD
 	if (m_pLCD)
 		m_pLCD->Clear();

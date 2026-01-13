@@ -70,11 +70,19 @@ public:
 		ENUM(Ethernet, ethernet)   \
 		ENUM(WiFi, wifi)
 
+	#define ENUM_VISUALIZATIONMODE(ENUM) \
+		ENUM(BarGraph, bargraph)         \
+		ENUM(Animation, animation)       \
+		ENUM(Asteroids, asteroids)       \
+		ENUM(MatrixRain, matrixrain)     \
+		ENUM(Oscilloscope, oscilloscope)
+
 	CONFIG_ENUM(TSystemDefaultSynth, ENUM_SYSTEMDEFAULTSYNTH);
 	CONFIG_ENUM(TAudioOutputDevice, ENUM_AUDIOOUTPUTDEVICE);
 	CONFIG_ENUM(TControlScheme, ENUM_CONTROLSCHEME);
 	CONFIG_ENUM(TLCDType, ENUM_LCDTYPE);
 	CONFIG_ENUM(TNetworkMode, ENUM_NETWORKMODE);
+	CONFIG_ENUM(TVisualizationMode, ENUM_VISUALIZATIONMODE);
 
 	CConfig();
 	bool Initialize(const char* pPath);
@@ -102,6 +110,7 @@ public:
 	static bool ParseOption(const char* pString, TLCDRotation* pOut);
 	static bool ParseOption(const char* pString, TLCDMirror* pOut);
 	static bool ParseOption(const char* pString, TNetworkMode* pOut);
+	static bool ParseOption(const char* pString, TVisualizationMode* pOut);
 
 private:
 	static int INIHandler(void* pUser, const char* pSection, const char* pName, const char* pValue);

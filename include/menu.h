@@ -110,6 +110,8 @@ public:
 	// State management
 	void EnterMenu();
 	void ExitMenu();
+	void LoadVisualizationMode();
+	void SaveVisualizationMode();
 	bool IsActive() const { return m_bActive; }
 	bool IsEditing() const { return m_bEditing; }
 

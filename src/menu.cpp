@@ -24,11 +24,15 @@
 #include "lcd/lcd.h"
 #include "lcd/drivers/ssd1306.h"
 #include "utility.h"
+#include "config.h"
 #include <circle/timer.h>
+#include <circle/logger.h>
 #include <fatfs/ff.h>
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
+
+LOGMODULE("menu");
 
 CMenu::CMenu()
 	: m_bActive(false),
@@ -95,6 +99,89 @@ void CMenu::ExitMenu()
 	m_bEditing = false;
 	m_bShowAnimSettings = false;
 	m_bShowPresetMenu = false;
+}
+
+void CMenu::LoadVisualizationMode()
+{
+	// Try to load from state file first
+	FIL File;
+	FRESULT res = f_open(&File, "SD:/visualization_state.cfg", FA_READ);
+	if (res == FR_OK)
+	{
+		char buffer[64];
+		UINT bytesRead;
+		if (f_read(&File, buffer, sizeof(buffer) - 1, &bytesRead) == FR_OK && bytesRead > 0)
+		{
+			buffer[bytesRead] = '\0';
+
+			// Trim newline
+			for (size_t i = 0; i < sizeof(buffer); ++i)
+			{
+				if (buffer[i] == '\n' || buffer[i] == '\r')
+				{
+					buffer[i] = '\0';
+					break;
+				}
+			}
+
+			// Parse the mode string
+			if (strcmp(buffer, "bargraph") == 0)
+				m_VisualizationMode = TVisualizationMode::BarGraph;
+			else if (strcmp(buffer, "animation") == 0)
+				m_VisualizationMode = TVisualizationMode::Animation;
+			else if (strcmp(buffer, "asteroids") == 0)
+				m_VisualizationMode = TVisualizationMode::Asteroids;
+			else if (strcmp(buffer, "matrixrain") == 0)
+				m_VisualizationMode = TVisualizationMode::MatrixRain;
+			else if (strcmp(buffer, "oscilloscope") == 0)
+				m_VisualizationMode = TVisualizationMode::Oscilloscope;
+
+			LOGNOTE("Loaded visualization mode: %s", buffer);
+		}
+
+		f_close(&File);
+	}
+	else
+	{
+		LOGWARN("Visualization state file not found, f_open returned %d", res);
+	}
+}
+
+void CMenu::SaveVisualizationMode()
+{
+	// Save to a separate state file to avoid overwriting main config
+	FIL File;
+	FRESULT res = f_open(&File, "SD:/visualization_state.cfg", FA_WRITE | FA_CREATE_ALWAYS);
+	if (res != FR_OK)
+	{
+		LOGWARN("Failed to save visualization mode, f_open returned %d", res);
+		return;
+	}
+
+	const char* modeStr = "bargraph";
+	switch (m_VisualizationMode)
+	{
+		case TVisualizationMode::BarGraph: modeStr = "bargraph"; break;
+		case TVisualizationMode::Animation: modeStr = "animation"; break;
+		case TVisualizationMode::Asteroids: modeStr = "asteroids"; break;
+		case TVisualizationMode::MatrixRain: modeStr = "matrixrain"; break;
+		case TVisualizationMode::Oscilloscope: modeStr = "oscilloscope"; break;
+		case TVisualizationMode::Count: break;  // Not a valid mode to save
+	}
+
+	char buffer[64];
+	snprintf(buffer, sizeof(buffer), "%s\n", modeStr);
+
+	UINT bytesWritten;
+	res = f_write(&File, buffer, strlen(buffer), &bytesWritten);
+	if (res == FR_OK)
+		res = f_sync(&File);  // Ensure data is flushed to disk
+	f_close(&File);
+
+	if (res == FR_OK)
+		LOGNOTE("Saved visualization mode: %s", modeStr);
+	else
+		LOGWARN("Failed to write visualization mode, f_write returned %d", res);
 }
 
 void CMenu::Navigate(s8 nDelta)
@@ -514,6 +601,9 @@ void CMenu::AdjustAnimSettingsValue(s8 nDelta)
 		else if (nMode >= static_cast<s8>(TVisualizationMode::Count))
 			nMode = 0;
 		m_VisualizationMode = static_cast<TVisualizationMode>(nMode);
+
+		// Save the new mode to persistent storage
+		SaveVisualizationMode();
 	}
 }
 
