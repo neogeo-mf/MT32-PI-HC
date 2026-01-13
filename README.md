@@ -71,7 +71,17 @@ The goal of this development is focused on features for musicians, and the focus
 
 - [Embedded FTP server][FTP server] for remote access to files.
 
-## Installation
+## Installation / Upgrade (If upgrading your HobbyChop device)
+
+1. Download the latest release from the [Releases] section.
+
+2. Extract the contents.
+
+3. Copy kernel8.img to the root of your MT32-Pi-HC SD Card.
+
+4. Done
+
+## Installation (if setting up a device from scratch)
 
 1. Download the latest release from the [Releases] section.
 
@@ -85,6 +95,6 @@ The goal of this development is focused on features for musicians, and the focus
 
 6. Connect a [USB MIDI interface][USB MIDI interfaces] or [GPIO MIDI circuit][GPIO MIDI interface] to the Pi, and connect some speakers to the headphone jack.
 
-7. Connect your vintage PC's MIDI OUT to the Pi's MIDI IN and (optionally) vice versa.
+7. Connect your PC's MIDI OUT to the Pi's MIDI IN and (optionally) vice versa.
 
 Device available here: https://hobbychop.com
