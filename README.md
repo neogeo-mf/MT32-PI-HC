@@ -71,9 +71,9 @@ The goal of this development is focused on features for musicians, and the focus
 
 - [Embedded FTP server][FTP server] for remote access to files.
 
-## Installation / Upgrade (If upgrading your HobbyChop device)
+## Upgrade (If upgrading your HobbyChop device)
 
-1. Download the latest release from the [Releases] section.
+1. Download the latest release .zip file from https://github.com/Chiptune-Anamnesis/MT32-PI-HC/releases
 
 2. Extract the contents.
 
@@ -83,7 +83,7 @@ The goal of this development is focused on features for musicians, and the focus
 
 ## Installation (if setting up a device from scratch)
 
-1. Download the latest release from the [Releases] section.
+1. Download the latest release from: https://github.com/Chiptune-Anamnesis/MT32-PI-HC/releases
 
 2. Extract contents to a blank [FAT32-formatted SD card][SD card preparation].
 
