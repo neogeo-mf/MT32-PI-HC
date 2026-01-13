@@ -18,12 +18,36 @@
 
 ## New features 0.25.0
 
-- Midi Ch. Settings menu (press encoder knob)
-Change per channel MIDI settings, program, vol. mute, route directly on device.
+### MIDI Channel Settings Menu
+Press the encoder knob to access the MIDI channel settings menu where you can:
+- **Channel**: Select MIDI channel (1-16)
+- **Mute**: Toggle channel mute on/off
+- **Volume**: Adjust channel volume (0-127)
+- **Program**: Change program/patch number (0-127)
+- **Route**: Route channel to different output channel
+- **Next**: Navigate to Animation Settings menu
+- **Exit**: Return to normal display
 
-## Planned features
+### Animation Settings Menu
+From the MIDI Channel Settings menu, select "Next" to access animation settings:
+- **Mode**: Choose visualization mode:
+  - **BarGraph**: Classic MIDI activity bar graph (default)
+  - **Animation**: Cute face animations that react to MIDI
+  - **Asteroids**: MIDI-reactive asteroids game with AI ship - notes spawn asteroids
+  - **MatrixRain**: Matrix-style falling characters that react to note velocity
+  - **Oscilloscope**: Real-time waveform display with MIDI-triggered waves
+- **Next**: Navigate to Preset Menu (save/load MIDI channel configurations)
+- **Back**: Return to MIDI Channel Settings menu
+- **Exit**: Return to normal display
 
-- Make device remembers last used soundfont and will select it automatically upon device reboot, power loss, etc.
+All three new visualization modes (Asteroids, MatrixRain, Oscilloscope) are fully MIDI-reactive and respond dynamically to incoming MIDI notes.
+
+### Persistent Settings
+The device now remembers your preferences across reboots:
+- **Last selected visualization mode** - Your chosen animation mode is saved automatically and restored on boot
+- **Last used SoundFont** - The device remembers which SoundFont you were using and loads it automatically on next boot
+
+These settings are stored in separate state files on the SD card and persist through power loss.
 
 ## Project status
 
