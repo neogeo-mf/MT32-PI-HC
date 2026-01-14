@@ -568,34 +568,67 @@ void CMT32Pi::UITask()
 			const u8 nCC = m_Menu.GetPendingFXChangeCC();
 			const u8 nValue = m_Menu.GetPendingFXChangeValue();
 
-			// Send MIDI Control Change message (0xB0 + channel, CC, value)
-			const u32 nCCMessage = 0xB0 | nChannel | (nCC << 8) | (nValue << 16);
-			if (m_pCurrentSynth)
+			// Check if we should use SF Override for reverb/chorus
+			bool bUsedOverride = false;
+			if (m_pCurrentSynth == m_pSoundFontSynth)
+			{
+				if (nCC == 91 && m_Menu.GetReverbSFOverride())
+				{
+					// Use generator override instead of CC for reverb
+					m_pSoundFontSynth->SetChannelReverbSendOverride(nChannel, nValue);
+					bUsedOverride = true;
+				}
+				else if (nCC == 93 && m_Menu.GetChorusSFOverride())
+				{
+					// Use generator override instead of CC for chorus
+					m_pSoundFontSynth->SetChannelChorusSendOverride(nChannel, nValue);
+					bUsedOverride = true;
+				}
+			}
+
+			// Fall back to standard CC if not using override
+			if (!bUsedOverride && m_pCurrentSynth)
+			{
+				const u32 nCCMessage = 0xB0 | nChannel | (nCC << 8) | (nValue << 16);
 				m_pCurrentSynth->HandleMIDIShortMessage(nCCMessage);
+			}
 
 			m_Menu.ClearPendingFXChange();
 		}
 
-		// Check if all FX settings need to be sent (e.g., after loading a preset)
+		// Check if all FX settings need to be sent (e.g., after loading a preset or toggling SF Override)
 		if (m_Menu.NeedsAllFXSent())
 		{
 			if (m_pCurrentSynth)
 			{
+				const bool bReverbOverride = m_Menu.GetReverbSFOverride() && (m_pCurrentSynth == m_pSoundFontSynth);
+				const bool bChorusOverride = m_Menu.GetChorusSFOverride() && (m_pCurrentSynth == m_pSoundFontSynth);
+
 				for (u8 nChannel = 0; nChannel < 16; ++nChannel)
 				{
-					// Send reverb (CC 91)
+					// Send reverb (CC 91 or generator override)
 					u8 nReverb = m_Menu.GetChannelReverbSend(nChannel);
-					u32 nMsg = 0xB0 | nChannel | (91 << 8) | (nReverb << 16);
-					m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+					if (bReverbOverride)
+						m_pSoundFontSynth->SetChannelReverbSendOverride(nChannel, nReverb);
+					else
+					{
+						u32 nMsg = 0xB0 | nChannel | (91 << 8) | (nReverb << 16);
+						m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+					}
 
-					// Send chorus (CC 93)
+					// Send chorus (CC 93 or generator override)
 					u8 nChorus = m_Menu.GetChannelChorusSend(nChannel);
-					nMsg = 0xB0 | nChannel | (93 << 8) | (nChorus << 16);
-					m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+					if (bChorusOverride)
+						m_pSoundFontSynth->SetChannelChorusSendOverride(nChannel, nChorus);
+					else
+					{
+						u32 nMsg = 0xB0 | nChannel | (93 << 8) | (nChorus << 16);
+						m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+					}
 
 					// Send pan (CC 10)
 					u8 nPan = m_Menu.GetChannelPan(nChannel);
-					nMsg = 0xB0 | nChannel | (10 << 8) | (nPan << 16);
+					u32 nMsg = 0xB0 | nChannel | (10 << 8) | (nPan << 16);
 					m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
 
 					// Send expression (CC 11)

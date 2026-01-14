@@ -72,6 +72,7 @@ public:
 	{
 		RoomSize,   // Reverb room size (0.0-1.0)
 		Damping,    // Reverb damping (0.0-1.0)
+		SFOverride, // SoundFont override (on/off)
 		Width,      // Reverb width (0.0-100.0)
 		Level,      // Reverb level (0.0-1.0)
 		Back,       // Go back to FX settings
@@ -83,6 +84,7 @@ public:
 	{
 		Depth,      // Chorus depth (0.0-21.0)
 		Speed,      // Chorus speed (0.1-5.0 Hz)
+		SFOverride, // SoundFont override (on/off)
 		Level,      // Chorus level (0.0-10.0)
 		Voices,     // Chorus voices (0-99)
 		Back,       // Go back to FX settings
@@ -153,6 +155,9 @@ public:
 		u8 ChorusSpeed;                 // 1-50 (maps to 0.1-5.0 Hz, divide by 10)
 		u8 ChorusLevel;                 // 0-100 (maps to 0.0-10.0, divide by 10)
 		u8 ChorusVoices;                // 0-99 (direct mapping)
+		// SF Override flags (new in Version 4)
+		u8 ReverbSFOverride;            // 0 = off, 1 = on
+		u8 ChorusSFOverride;            // 0 = off, 1 = on
 	};
 
 	CMenu();
@@ -196,6 +201,10 @@ public:
 	u8 GetChorusSpeed() const { return m_nChorusSpeed; }
 	u8 GetChorusLevel() const { return m_nChorusLevel; }
 	u8 GetChorusVoices() const { return m_nChorusVoices; }
+
+	// SoundFont override flags - read access
+	bool GetReverbSFOverride() const { return m_bReverbSFOverride; }
+	bool GetChorusSFOverride() const { return m_bChorusSFOverride; }
 
 	// Program change notification
 	bool HasPendingProgramChange() const { return m_bPendingProgramChange; }
@@ -301,6 +310,10 @@ private:
 	u8 m_nChorusSpeed;      // 1-50 (maps to 0.1-5.0 Hz, divide by 10)
 	u8 m_nChorusLevel;      // 0-100 (maps to 0.0-10.0, divide by 10)
 	u8 m_nChorusVoices;     // 0-99 (direct mapping)
+
+	// SoundFont override flags - when true, use generator instead of CC for send levels
+	bool m_bReverbSFOverride;   // Override SoundFont's built-in reverb send
+	bool m_bChorusSFOverride;   // Override SoundFont's built-in chorus send
 
 	// Global FX change tracking
 	bool m_bPendingGlobalFXChange;

@@ -67,6 +67,11 @@ public:
 	void SetChorusLevel(float fValue);
 	void SetChorusVoices(int nValue);
 
+	// SoundFont generator override for per-channel reverb/chorus send
+	// These override the SoundFont's built-in send values instead of modulating them
+	void SetChannelReverbSendOverride(u8 nChannel, u8 nValue);
+	void SetChannelChorusSendOverride(u8 nChannel, u8 nValue);
+
 private:
 	bool Reinitialize(const char* pSoundFontPath, const TFXProfile* pFXProfile);
 	void ResetMIDIMonitor();
