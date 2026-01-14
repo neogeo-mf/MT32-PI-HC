@@ -42,6 +42,41 @@ From the MIDI Channel Settings menu, select "Next" to access animation settings:
 
 All three new visualization modes (Asteroids, MatrixRain, Oscilloscope) are fully MIDI-reactive and respond dynamically to incoming MIDI notes.
 
+### FX Settings Menu (SoundFont Mode Only)
+Access advanced effects controls when using SoundFont mode. Navigate from the MIDI Channel Settings menu by selecting "Next" twice (through Animation Settings):
+
+#### Per-Channel FX Controls:
+- **R Button**: Opens Reverb Settings (global reverb parameters)
+- **C Button**: Opens Chorus Settings (global chorus parameters)
+- **Ch**: Select MIDI channel (1-16)
+- **Rv**: Reverb send level for selected channel (0-127, CC 91)
+- **Chr**: Chorus send level for selected channel (0-127, CC 93)
+- **Pn**: Pan position for selected channel (0-127, 64=center, CC 10)
+- **Ex**: Expression level for selected channel (0-127, CC 11)
+- **< Back**: Return to MIDI Channel Settings menu
+- **> Next**: Navigate to Animation Settings menu
+- **X Exit**: Return to normal display
+
+#### Reverb Settings (Press R):
+Global reverb parameters that affect the entire reverb unit:
+- **Rm**: Room Size (0-100) - Controls the perceived size of the reverb space
+- **Dp**: Damping (0-100) - High frequency absorption, higher values = darker reverb
+- **Wd**: Width (0-100) - Stereo width of the reverb effect
+- **Lv**: Level (0-100) - Overall reverb output level
+- **< Back**: Return to FX Settings menu
+- **X Exit**: Return to normal display
+
+#### Chorus Settings (Press C):
+Global chorus parameters that affect the entire chorus unit:
+- **Dp**: Depth (0-210) - Intensity of the chorus modulation (maps to 0.0-21.0)
+- **Sp**: Speed (1-50) - Modulation rate in Hz (maps to 0.1-5.0 Hz)
+- **Lv**: Level (0-100) - Overall chorus output level (maps to 0.0-10.0)
+- **Vc**: Voices (0-99) - Number of chorus voices
+- **< Back**: Return to FX Settings menu
+- **X Exit**: Return to normal display
+
+**Note**: All FX parameter changes take effect immediately in real-time without requiring a restart. These settings only apply when using SoundFont mode and have no effect on MT-32 mode.
+
 ### Persistent Settings
 The device now remembers your preferences across reboots:
 - **Last selected visualization mode** - Your chosen animation mode is saved automatically and restored on boot
@@ -71,9 +106,19 @@ The goal of this development is focused on features for musicians, and the focus
 
 - [Embedded FTP server][FTP server] for remote access to files.
 
-## Installation
+## Upgrade (If upgrading your HobbyChop device)
 
-1. Download the latest release from the [Releases] section.
+1. Download the latest release .zip file from https://github.com/Chiptune-Anamnesis/MT32-PI-HC/releases
+
+2. Extract the contents.
+
+3. Copy kernel8.img to the root of your MT32-Pi-HC SD Card.
+
+4. Done
+
+## Installation (if setting up a device from scratch)
+
+1. Download the latest release from: https://github.com/Chiptune-Anamnesis/MT32-PI-HC/releases
 
 2. Extract contents to a blank [FAT32-formatted SD card][SD card preparation].
 
@@ -85,6 +130,6 @@ The goal of this development is focused on features for musicians, and the focus
 
 6. Connect a [USB MIDI interface][USB MIDI interfaces] or [GPIO MIDI circuit][GPIO MIDI interface] to the Pi, and connect some speakers to the headphone jack.
 
-7. Connect your vintage PC's MIDI OUT to the Pi's MIDI IN and (optionally) vice versa.
+7. Connect your PC's MIDI OUT to the Pi's MIDI IN and (optionally) vice versa.
 
 Device available here: https://hobbychop.com
