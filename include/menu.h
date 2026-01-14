@@ -55,6 +55,8 @@ public:
 
 	enum class TFXSettingsOption
 	{
+		ReverbSettings,  // Open reverb settings menu (R button)
+		ChorusSettings,  // Open chorus settings menu (C button)
 		Channel,    // Select which channel (1-16)
 		Reverb,     // Reverb send level (CC 91)
 		Chorus,     // Chorus send level (CC 93)
@@ -62,6 +64,28 @@ public:
 		Expression, // Expression level (CC 11)
 		Back,       // Go back to main menu
 		Next,       // Go to animation settings
+		Exit,       // Exit menu
+		Count
+	};
+
+	enum class TReverbSettingsOption
+	{
+		RoomSize,   // Reverb room size (0.0-1.0)
+		Damping,    // Reverb damping (0.0-1.0)
+		Width,      // Reverb width (0.0-100.0)
+		Level,      // Reverb level (0.0-1.0)
+		Back,       // Go back to FX settings
+		Exit,       // Exit menu
+		Count
+	};
+
+	enum class TChorusSettingsOption
+	{
+		Depth,      // Chorus depth (0.0-21.0)
+		Speed,      // Chorus speed (0.1-5.0 Hz)
+		Level,      // Chorus level (0.0-10.0)
+		Voices,     // Chorus voices (0-99)
+		Back,       // Go back to FX settings
 		Exit,       // Exit menu
 		Count
 	};
@@ -154,6 +178,16 @@ public:
 	u8 GetChannelPan(u8 nChannel) const;
 	u8 GetChannelExpression(u8 nChannel) const;
 
+	// Global FX parameters - read access
+	u8 GetReverbRoomSize() const { return m_nReverbRoomSize; }
+	u8 GetReverbDamping() const { return m_nReverbDamping; }
+	u8 GetReverbWidth() const { return m_nReverbWidth; }
+	u8 GetReverbLevel() const { return m_nReverbLevel; }
+	u8 GetChorusDepth() const { return m_nChorusDepth; }
+	u8 GetChorusSpeed() const { return m_nChorusSpeed; }
+	u8 GetChorusLevel() const { return m_nChorusLevel; }
+	u8 GetChorusVoices() const { return m_nChorusVoices; }
+
 	// Program change notification
 	bool HasPendingProgramChange() const { return m_bPendingProgramChange; }
 	u8 GetPendingProgramChangeChannel() const { return m_nProgramChangeChannel; }
@@ -170,6 +204,23 @@ public:
 	bool NeedsAllFXSent() const { return m_bSendAllFX; }
 	void ClearSendAllFX() { m_bSendAllFX = false; }
 
+	// Global FX parameter change notification
+	enum class TGlobalFXParameter
+	{
+		ReverbRoomSize,
+		ReverbDamping,
+		ReverbWidth,
+		ReverbLevel,
+		ChorusDepth,
+		ChorusSpeed,
+		ChorusLevel,
+		ChorusVoices
+	};
+	bool HasPendingGlobalFXChange() const { return m_bPendingGlobalFXChange; }
+	TGlobalFXParameter GetPendingGlobalFXParameter() const { return m_PendingGlobalFXParameter; }
+	u8 GetPendingGlobalFXValue() const { return m_nPendingGlobalFXValue; }
+	void ClearPendingGlobalFXChange() { m_bPendingGlobalFXChange = false; }
+
 private:
 	static constexpr u8 MIDIChannelCount = 16;
 	static constexpr u8 DefaultChannelVolume = 127;
@@ -178,10 +229,14 @@ private:
 	bool m_bEditing;            // True when actively editing a value
 	bool m_bShowAnimSettings;   // True when showing animation settings screen
 	bool m_bShowFXSettings;     // True when showing FX settings screen
+	bool m_bShowReverbSettings; // True when showing reverb settings screen
+	bool m_bShowChorusSettings; // True when showing chorus settings screen
 	bool m_bShowPresetMenu;     // True when showing preset menu
 	u8 m_nSelectedChannel;      // 0-15
 	TMenuOption m_SelectedOption;
 	TFXSettingsOption m_FXSettingsOption;
+	TReverbSettingsOption m_ReverbSettingsOption;
+	TChorusSettingsOption m_ChorusSettingsOption;
 	TAnimSettingsOption m_AnimSettingsOption;
 	TVisualizationMode m_VisualizationMode;
 	TPresetMenuOption m_PresetMenuOption;
@@ -226,15 +281,36 @@ private:
 	u8 m_nFXChangeValue;
 	bool m_bSendAllFX;
 
+	// Global FX parameters (stored as 0-100 for menu display)
+	u8 m_nReverbRoomSize;   // 0-100 (maps to 0.0-1.0)
+	u8 m_nReverbDamping;    // 0-100 (maps to 0.0-1.0)
+	u8 m_nReverbWidth;      // 0-100 (maps to 0.0-100.0)
+	u8 m_nReverbLevel;      // 0-100 (maps to 0.0-1.0)
+	u8 m_nChorusDepth;      // 0-210 (maps to 0.0-21.0, divide by 10)
+	u8 m_nChorusSpeed;      // 1-50 (maps to 0.1-5.0 Hz, divide by 10)
+	u8 m_nChorusLevel;      // 0-100 (maps to 0.0-10.0, divide by 10)
+	u8 m_nChorusVoices;     // 0-99 (direct mapping)
+
+	// Global FX change tracking
+	bool m_bPendingGlobalFXChange;
+	TGlobalFXParameter m_PendingGlobalFXParameter;
+	u8 m_nPendingGlobalFXValue;
+
 	void NavigateOptions(s8 nDelta);
 	void NavigateFXSettings(s8 nDelta);
+	void NavigateReverbSettings(s8 nDelta);
+	void NavigateChorusSettings(s8 nDelta);
 	void NavigateAnimSettings(s8 nDelta);
 	void NavigatePresetMenu(s8 nDelta);
 	void AdjustValue(s8 nDelta);
 	void AdjustFXSettingsValue(s8 nDelta);
+	void AdjustReverbSettingsValue(s8 nDelta);
+	void AdjustChorusSettingsValue(s8 nDelta);
 	void AdjustAnimSettingsValue(s8 nDelta);
 	void DrawMainMenu(CLCD& LCD) const;
 	void DrawFXSettings(CLCD& LCD) const;
+	void DrawReverbSettings(CLCD& LCD) const;
+	void DrawChorusSettings(CLCD& LCD) const;
 	void DrawAnimSettings(CLCD& LCD) const;
 	void DrawPresetMenu(CLCD& LCD) const;
 	void DrawPresetMainMenu(CLCD& LCD) const;

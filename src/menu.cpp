@@ -39,10 +39,14 @@ CMenu::CMenu()
 	  m_bEditing(false),
 	  m_bShowAnimSettings(false),
 	  m_bShowFXSettings(false),
+	  m_bShowReverbSettings(false),
+	  m_bShowChorusSettings(false),
 	  m_bShowPresetMenu(false),
 	  m_nSelectedChannel(0),
 	  m_SelectedOption(TMenuOption::Channel),
-	  m_FXSettingsOption(TFXSettingsOption::Channel),
+	  m_FXSettingsOption(TFXSettingsOption::ReverbSettings),
+	  m_ReverbSettingsOption(TReverbSettingsOption::RoomSize),
+	  m_ChorusSettingsOption(TChorusSettingsOption::Depth),
 	  m_AnimSettingsOption(TAnimSettingsOption::Mode),
 	  m_VisualizationMode(TVisualizationMode::BarGraph),
 	  m_PresetMenuOption(TPresetMenuOption::Save),
@@ -64,7 +68,18 @@ CMenu::CMenu()
 	  m_nFXChangeChannel(0),
 	  m_nFXChangeCC(0),
 	  m_nFXChangeValue(0),
-	  m_bSendAllFX(false)
+	  m_bSendAllFX(false),
+	  m_nReverbRoomSize(20),
+	  m_nReverbDamping(0),
+	  m_nReverbWidth(50),
+	  m_nReverbLevel(90),
+	  m_nChorusDepth(80),
+	  m_nChorusSpeed(3),
+	  m_nChorusLevel(20),
+	  m_nChorusVoices(3),
+	  m_bPendingGlobalFXChange(false),
+	  m_PendingGlobalFXParameter(TGlobalFXParameter::ReverbRoomSize),
+	  m_nPendingGlobalFXValue(0)
 {
 	// Initialize toggle loop detection history
 	for (u8 i = 0; i < 5; ++i)
@@ -100,9 +115,11 @@ void CMenu::EnterMenu()
 	m_bEditing = false;
 	m_bShowAnimSettings = false;
 	m_bShowFXSettings = false;
+	m_bShowReverbSettings = false;
+	m_bShowChorusSettings = false;
 	m_bShowPresetMenu = false;
 	m_SelectedOption = TMenuOption::Channel;
-	m_FXSettingsOption = TFXSettingsOption::Channel;
+	m_FXSettingsOption = TFXSettingsOption::ReverbSettings;
 	m_AnimSettingsOption = TAnimSettingsOption::Mode;
 	m_PresetMenuOption = TPresetMenuOption::Save;
 	m_PresetMenuScreen = TPresetMenuScreen::Main;
@@ -114,6 +131,8 @@ void CMenu::ExitMenu()
 	m_bEditing = false;
 	m_bShowAnimSettings = false;
 	m_bShowFXSettings = false;
+	m_bShowReverbSettings = false;
+	m_bShowChorusSettings = false;
 	m_bShowPresetMenu = false;
 }
 
@@ -205,6 +224,20 @@ void CMenu::Navigate(s8 nDelta)
 	if (m_bShowPresetMenu)
 	{
 		NavigatePresetMenu(nDelta);
+	}
+	else if (m_bShowReverbSettings)
+	{
+		if (m_bEditing)
+			AdjustReverbSettingsValue(nDelta);
+		else
+			NavigateReverbSettings(nDelta);
+	}
+	else if (m_bShowChorusSettings)
+	{
+		if (m_bEditing)
+			AdjustChorusSettingsValue(nDelta);
+		else
+			NavigateChorusSettings(nDelta);
 	}
 	else if (m_bShowAnimSettings)
 	{
@@ -464,10 +497,70 @@ void CMenu::Select()
 			}
 		}
 	}
+	else if (m_bShowReverbSettings)
+	{
+		// Handle reverb settings screen
+		if (m_ReverbSettingsOption == TReverbSettingsOption::Back)
+		{
+			// Go back to FX settings
+			m_bShowReverbSettings = false;
+			m_bEditing = false;
+		}
+		else if (m_ReverbSettingsOption == TReverbSettingsOption::Exit)
+		{
+			// Exit menu
+			ExitMenu();
+		}
+		else
+		{
+			// Toggle edit mode for current option
+			m_EditToggleHistory[m_nEditToggleIndex] = nCurrentTime;
+			m_nEditToggleIndex = (m_nEditToggleIndex + 1) % 5;
+			m_nLastEditToggleTime = nCurrentTime;
+			m_bEditing = !m_bEditing;
+		}
+	}
+	else if (m_bShowChorusSettings)
+	{
+		// Handle chorus settings screen
+		if (m_ChorusSettingsOption == TChorusSettingsOption::Back)
+		{
+			// Go back to FX settings
+			m_bShowChorusSettings = false;
+			m_bEditing = false;
+		}
+		else if (m_ChorusSettingsOption == TChorusSettingsOption::Exit)
+		{
+			// Exit menu
+			ExitMenu();
+		}
+		else
+		{
+			// Toggle edit mode for current option
+			m_EditToggleHistory[m_nEditToggleIndex] = nCurrentTime;
+			m_nEditToggleIndex = (m_nEditToggleIndex + 1) % 5;
+			m_nLastEditToggleTime = nCurrentTime;
+			m_bEditing = !m_bEditing;
+		}
+	}
 	else if (m_bShowFXSettings)
 	{
 		// Handle FX settings screen
-		if (m_FXSettingsOption == TFXSettingsOption::Next)
+		if (m_FXSettingsOption == TFXSettingsOption::ReverbSettings)
+		{
+			// Go to reverb settings
+			m_bShowReverbSettings = true;
+			m_bEditing = false;
+			m_ReverbSettingsOption = TReverbSettingsOption::RoomSize;
+		}
+		else if (m_FXSettingsOption == TFXSettingsOption::ChorusSettings)
+		{
+			// Go to chorus settings
+			m_bShowChorusSettings = true;
+			m_bEditing = false;
+			m_ChorusSettingsOption = TChorusSettingsOption::Depth;
+		}
+		else if (m_FXSettingsOption == TFXSettingsOption::Next)
 		{
 			// Go to animation settings
 			m_bShowFXSettings = false;
@@ -669,6 +762,10 @@ void CMenu::Draw(CLCD& LCD) const
 
 	if (m_bShowPresetMenu)
 		DrawPresetMenu(LCD);
+	else if (m_bShowReverbSettings)
+		DrawReverbSettings(LCD);
+	else if (m_bShowChorusSettings)
+		DrawChorusSettings(LCD);
 	else if (m_bShowAnimSettings)
 		DrawAnimSettings(LCD);
 	else if (m_bShowFXSettings)
@@ -1939,6 +2036,430 @@ void CMenu::AdjustFXSettingsValue(s8 nDelta)
 	}
 }
 
+void CMenu::NavigateReverbSettings(s8 nDelta)
+{
+	s8 nOption = static_cast<s8>(m_ReverbSettingsOption) + nDelta;
+	if (nOption < 0)
+		nOption = static_cast<s8>(TReverbSettingsOption::Count) - 1;
+	else if (nOption >= static_cast<s8>(TReverbSettingsOption::Count))
+		nOption = 0;
+	m_ReverbSettingsOption = static_cast<TReverbSettingsOption>(nOption);
+}
+
+void CMenu::NavigateChorusSettings(s8 nDelta)
+{
+	s8 nOption = static_cast<s8>(m_ChorusSettingsOption) + nDelta;
+	if (nOption < 0)
+		nOption = static_cast<s8>(TChorusSettingsOption::Count) - 1;
+	else if (nOption >= static_cast<s8>(TChorusSettingsOption::Count))
+		nOption = 0;
+	m_ChorusSettingsOption = static_cast<TChorusSettingsOption>(nOption);
+}
+
+void CMenu::AdjustReverbSettingsValue(s8 nDelta)
+{
+	if (m_ReverbSettingsOption == TReverbSettingsOption::RoomSize)
+	{
+		// Adjust room size (0-100, maps to 0.0-1.0)
+		s16 nValue = static_cast<s16>(m_nReverbRoomSize) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 100)
+			nValue = 100;
+		m_nReverbRoomSize = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ReverbRoomSize;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+	else if (m_ReverbSettingsOption == TReverbSettingsOption::Damping)
+	{
+		// Adjust damping (0-100, maps to 0.0-1.0)
+		s16 nValue = static_cast<s16>(m_nReverbDamping) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 100)
+			nValue = 100;
+		m_nReverbDamping = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ReverbDamping;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+	else if (m_ReverbSettingsOption == TReverbSettingsOption::Width)
+	{
+		// Adjust width (0-100, maps to 0.0-100.0)
+		s16 nValue = static_cast<s16>(m_nReverbWidth) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 100)
+			nValue = 100;
+		m_nReverbWidth = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ReverbWidth;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+	else if (m_ReverbSettingsOption == TReverbSettingsOption::Level)
+	{
+		// Adjust level (0-100, maps to 0.0-1.0)
+		s16 nValue = static_cast<s16>(m_nReverbLevel) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 100)
+			nValue = 100;
+		m_nReverbLevel = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ReverbLevel;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+}
+
+void CMenu::AdjustChorusSettingsValue(s8 nDelta)
+{
+	if (m_ChorusSettingsOption == TChorusSettingsOption::Depth)
+	{
+		// Adjust depth (0-210, maps to 0.0-21.0, divide by 10)
+		s16 nValue = static_cast<s16>(m_nChorusDepth) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 210)
+			nValue = 210;
+		m_nChorusDepth = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ChorusDepth;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+	else if (m_ChorusSettingsOption == TChorusSettingsOption::Speed)
+	{
+		// Adjust speed (1-50, maps to 0.1-5.0 Hz, divide by 10)
+		s16 nValue = static_cast<s16>(m_nChorusSpeed) + nDelta;
+		if (nValue < 1)
+			nValue = 1;
+		else if (nValue > 50)
+			nValue = 50;
+		m_nChorusSpeed = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ChorusSpeed;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+	else if (m_ChorusSettingsOption == TChorusSettingsOption::Level)
+	{
+		// Adjust level (0-100, maps to 0.0-10.0, divide by 10)
+		s16 nValue = static_cast<s16>(m_nChorusLevel) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 100)
+			nValue = 100;
+		m_nChorusLevel = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ChorusLevel;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+	else if (m_ChorusSettingsOption == TChorusSettingsOption::Voices)
+	{
+		// Adjust voices (0-99, direct mapping)
+		s16 nValue = static_cast<s16>(m_nChorusVoices) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 99)
+			nValue = 99;
+		m_nChorusVoices = static_cast<u8>(nValue);
+
+		// Flag global FX change
+		m_bPendingGlobalFXChange = true;
+		m_PendingGlobalFXParameter = TGlobalFXParameter::ChorusVoices;
+		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
+	}
+}
+
+void CMenu::DrawReverbSettings(CLCD& LCD) const
+{
+	const bool bGraphical = (LCD.GetType() == CLCD::TType::Graphical);
+
+	if (bGraphical)
+	{
+		// OLED Display - 3 row layout
+		// Row 0 (y=0):  "REVERB" title
+		// Row 1 (y=11): "Rm:" + room size + "Dp:" + damping
+		// Row 2 (y=21): "Wd:" + width + "Lv:" + level + buttons
+
+		CSSD1306& OLED = static_cast<CSSD1306&>(LCD);
+
+		const u8 y0 = 0;
+		const u8 y1 = 11;
+		const u8 y2 = 21;
+
+		// Row 0: Title
+		OLED.PrintSmall("REVERB", 0, y0, false);
+
+		// Row 1: Room Size and Damping
+		bool roomSizeSelected = (m_ReverbSettingsOption == TReverbSettingsOption::RoomSize);
+		bool dampingSelected = (m_ReverbSettingsOption == TReverbSettingsOption::Damping);
+
+		// Room Size label and value
+		const u8 roomSizeLabelX = 0;
+		const u8 roomSizeValueX = 18;
+		OLED.PrintSmall("Rm:", roomSizeLabelX, y1, false);
+		char rmStr[4];
+		snprintf(rmStr, sizeof(rmStr), "%3d", m_nReverbRoomSize);
+
+		if (roomSizeSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(roomSizeValueX, y1, roomSizeValueX + 17, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(roomSizeValueX, y1 - 1, roomSizeValueX + 17, y1 - 1, false);
+				OLED.DrawFilledRect(roomSizeValueX, y1 + 8, roomSizeValueX + 17, y1 + 8, false);
+				OLED.DrawFilledRect(roomSizeValueX, y1 - 1, roomSizeValueX, y1 + 8, false);
+				OLED.DrawFilledRect(roomSizeValueX + 17, y1 - 1, roomSizeValueX + 17, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(rmStr, roomSizeValueX, y1, roomSizeSelected && m_bEditing);
+
+		// Damping label and value
+		const u8 dampingLabelX = 60;
+		const u8 dampingValueX = 78;
+		OLED.PrintSmall("Dp:", dampingLabelX, y1, false);
+		char dpStr[4];
+		snprintf(dpStr, sizeof(dpStr), "%3d", m_nReverbDamping);
+
+		if (dampingSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(dampingValueX, y1, dampingValueX + 17, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(dampingValueX, y1 - 1, dampingValueX + 17, y1 - 1, false);
+				OLED.DrawFilledRect(dampingValueX, y1 + 8, dampingValueX + 17, y1 + 8, false);
+				OLED.DrawFilledRect(dampingValueX, y1 - 1, dampingValueX, y1 + 8, false);
+				OLED.DrawFilledRect(dampingValueX + 17, y1 - 1, dampingValueX + 17, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(dpStr, dampingValueX, y1, dampingSelected && m_bEditing);
+
+		// Row 2: Width, Level, buttons
+		bool widthSelected = (m_ReverbSettingsOption == TReverbSettingsOption::Width);
+		bool levelSelected = (m_ReverbSettingsOption == TReverbSettingsOption::Level);
+		bool backSelected = (m_ReverbSettingsOption == TReverbSettingsOption::Back);
+		bool exitSelected = (m_ReverbSettingsOption == TReverbSettingsOption::Exit);
+
+		// Width label and value
+		const u8 widthLabelX = 0;
+		const u8 widthValueX = 18;
+		OLED.PrintSmall("Wd:", widthLabelX, y2, false);
+		char wdStr[4];
+		snprintf(wdStr, sizeof(wdStr), "%3d", m_nReverbWidth);
+
+		if (widthSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(widthValueX, y2, widthValueX + 17, y2 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(widthValueX, y2 - 1, widthValueX + 17, y2 - 1, false);
+				OLED.DrawFilledRect(widthValueX, y2 + 8, widthValueX + 17, y2 + 8, false);
+				OLED.DrawFilledRect(widthValueX, y2 - 1, widthValueX, y2 + 8, false);
+				OLED.DrawFilledRect(widthValueX + 17, y2 - 1, widthValueX + 17, y2 + 8, false);
+			}
+		}
+		OLED.PrintSmall(wdStr, widthValueX, y2, widthSelected && m_bEditing);
+
+		// Level label and value
+		const u8 levelLabelX = 46;
+		const u8 levelValueX = 64;
+		OLED.PrintSmall("Lv:", levelLabelX, y2, false);
+		char lvStr[4];
+		snprintf(lvStr, sizeof(lvStr), "%3d", m_nReverbLevel);
+
+		if (levelSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(levelValueX, y2, levelValueX + 17, y2 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(levelValueX, y2 - 1, levelValueX + 17, y2 - 1, false);
+				OLED.DrawFilledRect(levelValueX, y2 + 8, levelValueX + 17, y2 + 8, false);
+				OLED.DrawFilledRect(levelValueX, y2 - 1, levelValueX, y2 + 8, false);
+				OLED.DrawFilledRect(levelValueX + 17, y2 - 1, levelValueX + 17, y2 + 8, false);
+			}
+		}
+		OLED.PrintSmall(lvStr, levelValueX, y2, levelSelected && m_bEditing);
+
+		// Buttons
+		const u8 backX = 98;
+		const u8 exitX = 112;
+
+		// BACK button (<)
+		if (backSelected)
+			OLED.DrawFilledRect(backX, y2 - 1, backX + 12 - 1, y2 + 8, false);
+		OLED.PrintSmall("<", backX + 2, y2, backSelected);
+
+		// EXIT button (X)
+		if (exitSelected)
+			OLED.DrawFilledRect(exitX, y2 - 1, exitX + 12 - 1, y2 + 8, false);
+		OLED.PrintSmall("X", exitX + 2, y2, exitSelected);
+	}
+}
+
+void CMenu::DrawChorusSettings(CLCD& LCD) const
+{
+	const bool bGraphical = (LCD.GetType() == CLCD::TType::Graphical);
+
+	if (bGraphical)
+	{
+		// OLED Display - 3 row layout
+		// Row 0 (y=0):  "CHORUS" title
+		// Row 1 (y=11): "Dp:" + depth + "Sp:" + speed
+		// Row 2 (y=21): "Lv:" + level + "Vc:" + voices + buttons
+
+		CSSD1306& OLED = static_cast<CSSD1306&>(LCD);
+
+		const u8 y0 = 0;
+		const u8 y1 = 11;
+		const u8 y2 = 21;
+
+		// Row 0: Title
+		OLED.PrintSmall("CHORUS", 0, y0, false);
+
+		// Row 1: Depth and Speed
+		bool depthSelected = (m_ChorusSettingsOption == TChorusSettingsOption::Depth);
+		bool speedSelected = (m_ChorusSettingsOption == TChorusSettingsOption::Speed);
+
+		// Depth label and value
+		const u8 depthLabelX = 0;
+		const u8 depthValueX = 18;
+		OLED.PrintSmall("Dp:", depthLabelX, y1, false);
+		char dpStr[4];
+		snprintf(dpStr, sizeof(dpStr), "%3d", m_nChorusDepth);
+
+		if (depthSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(depthValueX, y1, depthValueX + 17, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(depthValueX, y1 - 1, depthValueX + 17, y1 - 1, false);
+				OLED.DrawFilledRect(depthValueX, y1 + 8, depthValueX + 17, y1 + 8, false);
+				OLED.DrawFilledRect(depthValueX, y1 - 1, depthValueX, y1 + 8, false);
+				OLED.DrawFilledRect(depthValueX + 17, y1 - 1, depthValueX + 17, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(dpStr, depthValueX, y1, depthSelected && m_bEditing);
+
+		// Speed label and value
+		const u8 speedLabelX = 60;
+		const u8 speedValueX = 78;
+		OLED.PrintSmall("Sp:", speedLabelX, y1, false);
+		char spStr[4];
+		snprintf(spStr, sizeof(spStr), "%3d", m_nChorusSpeed);
+
+		if (speedSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(speedValueX, y1, speedValueX + 17, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(speedValueX, y1 - 1, speedValueX + 17, y1 - 1, false);
+				OLED.DrawFilledRect(speedValueX, y1 + 8, speedValueX + 17, y1 + 8, false);
+				OLED.DrawFilledRect(speedValueX, y1 - 1, speedValueX, y1 + 8, false);
+				OLED.DrawFilledRect(speedValueX + 17, y1 - 1, speedValueX + 17, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(spStr, speedValueX, y1, speedSelected && m_bEditing);
+
+		// Row 2: Level, Voices, buttons
+		bool levelSelected = (m_ChorusSettingsOption == TChorusSettingsOption::Level);
+		bool voicesSelected = (m_ChorusSettingsOption == TChorusSettingsOption::Voices);
+		bool backSelected = (m_ChorusSettingsOption == TChorusSettingsOption::Back);
+		bool exitSelected = (m_ChorusSettingsOption == TChorusSettingsOption::Exit);
+
+		// Level label and value
+		const u8 levelLabelX = 0;
+		const u8 levelValueX = 18;
+		OLED.PrintSmall("Lv:", levelLabelX, y2, false);
+		char lvStr[4];
+		snprintf(lvStr, sizeof(lvStr), "%3d", m_nChorusLevel);
+
+		if (levelSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(levelValueX, y2, levelValueX + 17, y2 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(levelValueX, y2 - 1, levelValueX + 17, y2 - 1, false);
+				OLED.DrawFilledRect(levelValueX, y2 + 8, levelValueX + 17, y2 + 8, false);
+				OLED.DrawFilledRect(levelValueX, y2 - 1, levelValueX, y2 + 8, false);
+				OLED.DrawFilledRect(levelValueX + 17, y2 - 1, levelValueX + 17, y2 + 8, false);
+			}
+		}
+		OLED.PrintSmall(lvStr, levelValueX, y2, levelSelected && m_bEditing);
+
+		// Voices label and value
+		const u8 voicesLabelX = 46;
+		const u8 voicesValueX = 64;
+		OLED.PrintSmall("Vc:", voicesLabelX, y2, false);
+		char vcStr[4];
+		snprintf(vcStr, sizeof(vcStr), "%3d", m_nChorusVoices);
+
+		if (voicesSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(voicesValueX, y2, voicesValueX + 17, y2 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(voicesValueX, y2 - 1, voicesValueX + 17, y2 - 1, false);
+				OLED.DrawFilledRect(voicesValueX, y2 + 8, voicesValueX + 17, y2 + 8, false);
+				OLED.DrawFilledRect(voicesValueX, y2 - 1, voicesValueX, y2 + 8, false);
+				OLED.DrawFilledRect(voicesValueX + 17, y2 - 1, voicesValueX + 17, y2 + 8, false);
+			}
+		}
+		OLED.PrintSmall(vcStr, voicesValueX, y2, voicesSelected && m_bEditing);
+
+		// Buttons
+		const u8 backX = 98;
+		const u8 exitX = 112;
+
+		// BACK button (<)
+		if (backSelected)
+			OLED.DrawFilledRect(backX, y2 - 1, backX + 12 - 1, y2 + 8, false);
+		OLED.PrintSmall("<", backX + 2, y2, backSelected);
+
+		// EXIT button (X)
+		if (exitSelected)
+			OLED.DrawFilledRect(exitX, y2 - 1, exitX + 12 - 1, y2 + 8, false);
+		OLED.PrintSmall("X", exitX + 2, y2, exitSelected);
+	}
+}
+
 void CMenu::DrawFXSettings(CLCD& LCD) const
 {
 	const bool bGraphical = (LCD.GetType() == CLCD::TType::Graphical);
@@ -1956,8 +2477,24 @@ void CMenu::DrawFXSettings(CLCD& LCD) const
 		const u8 y1 = 11;
 		const u8 y2 = 21;
 
-		// Row 0: Title
+		// Row 0: Title and R/C buttons
 		OLED.PrintSmall("FX SETTINGS", 0, y0, false);
+
+		bool reverbSettingsSelected = (m_FXSettingsOption == TFXSettingsOption::ReverbSettings);
+		bool chorusSettingsSelected = (m_FXSettingsOption == TFXSettingsOption::ChorusSettings);
+
+		const u8 rButtonX = 74;
+		const u8 cButtonX = 88;
+
+		// R button
+		if (reverbSettingsSelected)
+			OLED.DrawFilledRect(rButtonX, y0 - 1, rButtonX + 12 - 1, y0 + 8, false);
+		OLED.PrintSmall("R", rButtonX + 2, y0, reverbSettingsSelected);
+
+		// C button
+		if (chorusSettingsSelected)
+			OLED.DrawFilledRect(cButtonX, y0 - 1, cButtonX + 12 - 1, y0 + 8, false);
+		OLED.PrintSmall("C", cButtonX + 2, y0, chorusSettingsSelected);
 
 		// Get current channel values
 		u8 nReverb = m_ChannelReverbSend[m_nSelectedChannel];
@@ -2017,8 +2554,8 @@ void CMenu::DrawFXSettings(CLCD& LCD) const
 		OLED.PrintSmall(rvStr, reverbValueX, y1, reverbSelected && m_bEditing);
 
 		// Chorus label and value
-		const u8 chorusLabelX = 74;
-		const u8 chorusValueX = 98;
+		const u8 chorusLabelX = 77;
+		const u8 chorusValueX = 101;
 		OLED.PrintSmall("Ch:", chorusLabelX, y1, false);
 		char chsStr[4];
 		snprintf(chsStr, sizeof(chsStr), "%3d", nChorus);

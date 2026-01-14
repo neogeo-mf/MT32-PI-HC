@@ -607,6 +607,52 @@ void CMT32Pi::UITask()
 			m_Menu.ClearSendAllFX();
 		}
 
+		// Check if a global FX parameter change needs to be applied (only for SoundFont synth)
+		if (m_Menu.HasPendingGlobalFXChange())
+		{
+			if (m_pCurrentSynth == m_pSoundFontSynth)
+			{
+				const CMenu::TGlobalFXParameter param = m_Menu.GetPendingGlobalFXParameter();
+				const u8 nValue = m_Menu.GetPendingGlobalFXValue();
+
+				switch (param)
+				{
+					case CMenu::TGlobalFXParameter::ReverbRoomSize:
+						m_pSoundFontSynth->SetReverbRoomSize(nValue / 100.0f);
+						break;
+
+					case CMenu::TGlobalFXParameter::ReverbDamping:
+						m_pSoundFontSynth->SetReverbDamping(nValue / 100.0f);
+						break;
+
+					case CMenu::TGlobalFXParameter::ReverbWidth:
+						m_pSoundFontSynth->SetReverbWidth(nValue);
+						break;
+
+					case CMenu::TGlobalFXParameter::ReverbLevel:
+						m_pSoundFontSynth->SetReverbLevel(nValue / 100.0f);
+						break;
+
+					case CMenu::TGlobalFXParameter::ChorusDepth:
+						m_pSoundFontSynth->SetChorusDepth(nValue / 10.0f);
+						break;
+
+					case CMenu::TGlobalFXParameter::ChorusSpeed:
+						m_pSoundFontSynth->SetChorusSpeed(nValue / 10.0f);
+						break;
+
+					case CMenu::TGlobalFXParameter::ChorusLevel:
+						m_pSoundFontSynth->SetChorusLevel(nValue / 10.0f);
+						break;
+
+					case CMenu::TGlobalFXParameter::ChorusVoices:
+						m_pSoundFontSynth->SetChorusVoices(nValue);
+						break;
+				}
+			}
+			m_Menu.ClearPendingGlobalFXChange();
+		}
+
 		// Poll MiSTer interface
 		if (bMisterEnabled && (nTicks - m_nMisterUpdateTime) >= Utility::MillisToTicks(MisterUpdatePeriodMillis))
 		{

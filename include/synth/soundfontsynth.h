@@ -57,6 +57,16 @@ public:
 	void SaveSoundFontIndex();
 	size_t LoadSoundFontIndex();
 
+	// Real-time FX parameter control
+	void SetReverbRoomSize(float fValue);
+	void SetReverbDamping(float fValue);
+	void SetReverbWidth(float fValue);
+	void SetReverbLevel(float fValue);
+	void SetChorusDepth(float fValue);
+	void SetChorusSpeed(float fValue);
+	void SetChorusLevel(float fValue);
+	void SetChorusVoices(int nValue);
+
 private:
 	bool Reinitialize(const char* pSoundFontPath, const TFXProfile* pFXProfile);
 	void ResetMIDIMonitor();
