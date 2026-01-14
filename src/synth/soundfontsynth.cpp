@@ -477,6 +477,28 @@ void CSoundFontSynth::SetChorusVoices(int nValue)
 		fluid_synth_set_chorus_group_nr(m_pSynth, -1, nValue);
 }
 
+void CSoundFontSynth::SetChannelReverbSendOverride(u8 nChannel, u8 nValue)
+{
+	if (m_pSynth && nChannel < 16)
+	{
+		// GEN_REVERBSEND (56) uses centibels: 0-1000 range maps to 0% to 100% send
+		// Menu value is 0-127, scale to 0-1000 centibels
+		float fCentibels = (nValue / 127.0f) * 1000.0f;
+		fluid_synth_set_gen(m_pSynth, nChannel, GEN_REVERBSEND, fCentibels);
+	}
+}
+
+void CSoundFontSynth::SetChannelChorusSendOverride(u8 nChannel, u8 nValue)
+{
+	if (m_pSynth && nChannel < 16)
+	{
+		// GEN_CHORUSSEND (55) uses centibels: 0-1000 range maps to 0% to 100% send
+		// Menu value is 0-127, scale to 0-1000 centibels
+		float fCentibels = (nValue / 127.0f) * 1000.0f;
+		fluid_synth_set_gen(m_pSynth, nChannel, GEN_CHORUSSEND, fCentibels);
+	}
+}
+
 bool CSoundFontSynth::Reinitialize(const char* pSoundFontPath, const TFXProfile* pFXProfile)
 {
 	const CConfig* const pConfig = CConfig::Get();

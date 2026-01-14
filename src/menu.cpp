@@ -77,6 +77,8 @@ CMenu::CMenu()
 	  m_nChorusSpeed(3),
 	  m_nChorusLevel(20),
 	  m_nChorusVoices(3),
+	  m_bReverbSFOverride(false),
+	  m_bChorusSFOverride(false),
 	  m_bPendingGlobalFXChange(false),
 	  m_PendingGlobalFXParameter(TGlobalFXParameter::ReverbRoomSize),
 	  m_nPendingGlobalFXValue(0),
@@ -1357,7 +1359,7 @@ bool CMenu::SavePreset(const char* pName)
 		MIDIPreset Preset;
 	} presetFile;
 
-	presetFile.Version = 3;  // Version 3 format (includes per-channel FX and global FX parameters)
+	presetFile.Version = 4;  // Version 4 format (includes SF Override flags)
 
 	// Copy preset data
 	strncpy(presetFile.Preset.Name, pName, 12);
@@ -1373,7 +1375,7 @@ bool CMenu::SavePreset(const char* pName)
 	memcpy(presetFile.Preset.ChannelPan, m_ChannelPan, sizeof(presetFile.Preset.ChannelPan));
 	memcpy(presetFile.Preset.ChannelExpression, m_ChannelExpression, sizeof(presetFile.Preset.ChannelExpression));
 
-	// Copy global FX parameters (new in Version 3)
+	// Copy global FX parameters (Version 3+)
 	presetFile.Preset.ReverbRoomSize = m_nReverbRoomSize;
 	presetFile.Preset.ReverbDamping = m_nReverbDamping;
 	presetFile.Preset.ReverbWidth = m_nReverbWidth;
@@ -1382,6 +1384,10 @@ bool CMenu::SavePreset(const char* pName)
 	presetFile.Preset.ChorusSpeed = m_nChorusSpeed;
 	presetFile.Preset.ChorusLevel = m_nChorusLevel;
 	presetFile.Preset.ChorusVoices = m_nChorusVoices;
+
+	// Copy SF Override flags (new in Version 4)
+	presetFile.Preset.ReverbSFOverride = m_bReverbSFOverride ? 1 : 0;
+	presetFile.Preset.ChorusSFOverride = m_bChorusSFOverride ? 1 : 0;
 
 	FIL file;
 	FRESULT res = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
@@ -1394,7 +1400,7 @@ bool CMenu::SavePreset(const char* pName)
 		res = f_sync(&file);
 	f_close(&file);
 
-	LOGNOTE("Saved preset '%s' (Version 3, %u bytes)", pName, (unsigned int)bytesWritten);
+	LOGNOTE("Saved preset '%s' (Version 4, %u bytes)", pName, (unsigned int)bytesWritten);
 
 	return (res == FR_OK && bytesWritten == sizeof(presetFile));
 }
@@ -1420,6 +1426,7 @@ bool CMenu::LoadPreset(const char* pName)
 	const DWORD Version1Size = 64;  // Old format (no version byte, no FX): Name[13] + u16 + 3*u8[16] = 64 bytes
 	const DWORD Version2Size = 130;  // Version 2: 1 byte version + 1 padding + base (64) + per-channel FX (64) = 130 bytes
 	const DWORD Version3Size = 138;  // Version 3: 1 byte version + 1 padding + full preset (136) = 138 bytes (struct padding!)
+	const DWORD Version4Size = 140;  // Version 4: Version 3 + 2 SF Override flags
 
 	if (fileSize == Version1Size)
 	{
@@ -1564,6 +1571,10 @@ bool CMenu::LoadPreset(const char* pName)
 		m_nChorusLevel = presetFile.Preset.ChorusLevel;
 		m_nChorusVoices = presetFile.Preset.ChorusVoices;
 
+		// SF Override flags default to off for Version 3 presets
+		m_bReverbSFOverride = false;
+		m_bChorusSFOverride = false;
+
 		// Signal that all programs, per-channel FX, and global FX need to be sent to the synth
 		m_bSendAllPrograms = true;
 		m_bSendAllFX = true;
@@ -1572,12 +1583,69 @@ bool CMenu::LoadPreset(const char* pName)
 		LOGNOTE("Loaded Version 3 preset with per-channel and global FX");
 		return true;
 	}
+	else if (fileSize == Version4Size)
+	{
+		// Version 4 format (with SF Override flags)
+		LOGNOTE("Loading Version 4 preset '%s'", pName);
+
+		struct {
+			u8 Version;
+			MIDIPreset Preset;
+		} presetFile;
+
+		UINT bytesRead;
+		res = f_read(&file, &presetFile, sizeof(presetFile), &bytesRead);
+		f_close(&file);
+
+		if (res != FR_OK || bytesRead != sizeof(presetFile))
+			return false;
+
+		if (presetFile.Version != 4)
+		{
+			LOGWARN("Unknown preset version %u", presetFile.Version);
+			return false;
+		}
+
+		// Apply all settings including per-channel FX, global FX, and SF Override
+		m_nMutedChannels = presetFile.Preset.MutedChannels;
+		memcpy(m_ChannelRoute, presetFile.Preset.ChannelRoute, sizeof(m_ChannelRoute));
+		memcpy(m_ChannelVolume, presetFile.Preset.ChannelVolume, sizeof(m_ChannelVolume));
+		memcpy(m_ChannelProgram, presetFile.Preset.ChannelProgram, sizeof(m_ChannelProgram));
+		memcpy(m_ChannelReverbSend, presetFile.Preset.ChannelReverbSend, sizeof(m_ChannelReverbSend));
+		memcpy(m_ChannelChorusSend, presetFile.Preset.ChannelChorusSend, sizeof(m_ChannelChorusSend));
+		memcpy(m_ChannelPan, presetFile.Preset.ChannelPan, sizeof(m_ChannelPan));
+		memcpy(m_ChannelExpression, presetFile.Preset.ChannelExpression, sizeof(m_ChannelExpression));
+
+		// Load global FX parameters
+		m_nReverbRoomSize = presetFile.Preset.ReverbRoomSize;
+		m_nReverbDamping = presetFile.Preset.ReverbDamping;
+		m_nReverbWidth = presetFile.Preset.ReverbWidth;
+		m_nReverbLevel = presetFile.Preset.ReverbLevel;
+		m_nChorusDepth = presetFile.Preset.ChorusDepth;
+		m_nChorusSpeed = presetFile.Preset.ChorusSpeed;
+		m_nChorusLevel = presetFile.Preset.ChorusLevel;
+		m_nChorusVoices = presetFile.Preset.ChorusVoices;
+
+		// Load SF Override flags (new in Version 4)
+		m_bReverbSFOverride = presetFile.Preset.ReverbSFOverride != 0;
+		m_bChorusSFOverride = presetFile.Preset.ChorusSFOverride != 0;
+
+		// Signal that all programs, per-channel FX, and global FX need to be sent to the synth
+		m_bSendAllPrograms = true;
+		m_bSendAllFX = true;
+		m_bSendAllGlobalFX = true;
+
+		LOGNOTE("Loaded Version 4 preset with SF Override flags (Reverb: %s, Chorus: %s)",
+		        m_bReverbSFOverride ? "ON" : "OFF", m_bChorusSFOverride ? "ON" : "OFF");
+		return true;
+	}
 	else
 	{
 		// Unknown file size
 		f_close(&file);
-		LOGWARN("Invalid preset file size: %u bytes (expected %u, %u, or %u)",
-		        (unsigned int)fileSize, (unsigned int)Version1Size, (unsigned int)Version2Size, (unsigned int)Version3Size);
+		LOGWARN("Invalid preset file size: %u bytes (expected %u, %u, %u, or %u)",
+		        (unsigned int)fileSize, (unsigned int)Version1Size, (unsigned int)Version2Size,
+		        (unsigned int)Version3Size, (unsigned int)Version4Size);
 		return false;
 	}
 }
@@ -1646,6 +1714,15 @@ void CMenu::LoadPresetList()
 						bNameLoaded = true;
 				}
 				else if (fileSize == 138)  // Version 3
+				{
+					// Skip version header (1 byte version + 1 byte padding = 2 bytes), then read name
+					u8 header[2];
+					UINT bytesRead;
+					if (f_read(&file, header, 2, &bytesRead) == FR_OK && bytesRead == 2 &&
+					    f_read(&file, presetName, 13, &bytesRead) == FR_OK && bytesRead == 13)
+						bNameLoaded = true;
+				}
+				else if (fileSize == 140)  // Version 4
 				{
 					// Skip version header (1 byte version + 1 byte padding = 2 bytes), then read name
 					u8 header[2];
@@ -2263,6 +2340,16 @@ void CMenu::AdjustReverbSettingsValue(s8 nDelta)
 		m_PendingGlobalFXParameter = TGlobalFXParameter::ReverbLevel;
 		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
 	}
+	else if (m_ReverbSettingsOption == TReverbSettingsOption::SFOverride)
+	{
+		// Toggle SoundFont override on any rotation
+		if (nDelta != 0)
+		{
+			m_bReverbSFOverride = !m_bReverbSFOverride;
+			// Trigger re-send of all FX to apply the new mode
+			m_bSendAllFX = true;
+		}
+	}
 }
 
 void CMenu::AdjustChorusSettingsValue(s8 nDelta)
@@ -2327,6 +2414,16 @@ void CMenu::AdjustChorusSettingsValue(s8 nDelta)
 		m_PendingGlobalFXParameter = TGlobalFXParameter::ChorusVoices;
 		m_nPendingGlobalFXValue = static_cast<u8>(nValue);
 	}
+	else if (m_ChorusSettingsOption == TChorusSettingsOption::SFOverride)
+	{
+		// Toggle SoundFont override on any rotation
+		if (nDelta != 0)
+		{
+			m_bChorusSFOverride = !m_bChorusSFOverride;
+			// Trigger re-send of all FX to apply the new mode
+			m_bSendAllFX = true;
+		}
+	}
 }
 
 void CMenu::DrawReverbSettings(CLCD& LCD) const
@@ -2377,8 +2474,8 @@ void CMenu::DrawReverbSettings(CLCD& LCD) const
 		OLED.PrintSmall(rmStr, roomSizeValueX, y1, roomSizeSelected && m_bEditing);
 
 		// Damping label and value
-		const u8 dampingLabelX = 60;
-		const u8 dampingValueX = 78;
+		const u8 dampingLabelX = 42;
+		const u8 dampingValueX = 60;
 		OLED.PrintSmall("Dp:", dampingLabelX, y1, false);
 		char dpStr[4];
 		snprintf(dpStr, sizeof(dpStr), "%3d", m_nReverbDamping);
@@ -2398,6 +2495,29 @@ void CMenu::DrawReverbSettings(CLCD& LCD) const
 			}
 		}
 		OLED.PrintSmall(dpStr, dampingValueX, y1, dampingSelected && m_bEditing);
+
+		// SF Override label and value
+		bool sfOverrideSelected = (m_ReverbSettingsOption == TReverbSettingsOption::SFOverride);
+		const u8 sfLabelX = 84;
+		const u8 sfValueX = 102;
+		OLED.PrintSmall("SF:", sfLabelX, y1, false);
+		const char* sfStr = m_bReverbSFOverride ? "ON" : "OF";
+
+		if (sfOverrideSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(sfValueX, y1, sfValueX + 11, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(sfValueX, y1 - 1, sfValueX + 11, y1 - 1, false);
+				OLED.DrawFilledRect(sfValueX, y1 + 8, sfValueX + 11, y1 + 8, false);
+				OLED.DrawFilledRect(sfValueX, y1 - 1, sfValueX, y1 + 8, false);
+				OLED.DrawFilledRect(sfValueX + 11, y1 - 1, sfValueX + 11, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(sfStr, sfValueX, y1, sfOverrideSelected && m_bEditing);
 
 		// Row 2: Width, Level, buttons
 		bool widthSelected = (m_ReverbSettingsOption == TReverbSettingsOption::Width);
@@ -2515,8 +2635,8 @@ void CMenu::DrawChorusSettings(CLCD& LCD) const
 		OLED.PrintSmall(dpStr, depthValueX, y1, depthSelected && m_bEditing);
 
 		// Speed label and value
-		const u8 speedLabelX = 60;
-		const u8 speedValueX = 78;
+		const u8 speedLabelX = 42;
+		const u8 speedValueX = 60;
 		OLED.PrintSmall("Sp:", speedLabelX, y1, false);
 		char spStr[4];
 		snprintf(spStr, sizeof(spStr), "%3d", m_nChorusSpeed);
@@ -2536,6 +2656,29 @@ void CMenu::DrawChorusSettings(CLCD& LCD) const
 			}
 		}
 		OLED.PrintSmall(spStr, speedValueX, y1, speedSelected && m_bEditing);
+
+		// SF Override label and value
+		bool sfOverrideSelected = (m_ChorusSettingsOption == TChorusSettingsOption::SFOverride);
+		const u8 sfLabelX = 84;
+		const u8 sfValueX = 102;
+		OLED.PrintSmall("SF:", sfLabelX, y1, false);
+		const char* sfStr = m_bChorusSFOverride ? "ON" : "OF";
+
+		if (sfOverrideSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(sfValueX, y1, sfValueX + 11, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(sfValueX, y1 - 1, sfValueX + 11, y1 - 1, false);
+				OLED.DrawFilledRect(sfValueX, y1 + 8, sfValueX + 11, y1 + 8, false);
+				OLED.DrawFilledRect(sfValueX, y1 - 1, sfValueX, y1 + 8, false);
+				OLED.DrawFilledRect(sfValueX + 11, y1 - 1, sfValueX + 11, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(sfStr, sfValueX, y1, sfOverrideSelected && m_bEditing);
 
 		// Row 2: Level, Voices, buttons
 		bool levelSelected = (m_ChorusSettingsOption == TChorusSettingsOption::Level);

@@ -61,6 +61,7 @@ Access advanced effects controls when using SoundFont mode. Navigate from the MI
 Global reverb parameters that affect the entire reverb unit:
 - **Rm**: Room Size (0-100) - Controls the perceived size of the reverb space
 - **Dp**: Damping (0-100) - High frequency absorption, higher values = darker reverb
+- **SF**: SoundFont Override (ON/OFF) - When ON, per-channel reverb send values completely replace the SoundFont's built-in reverb levels instead of modulating them. Use this if you need to fully silence reverb on specific channels.
 - **Wd**: Width (0-100) - Stereo width of the reverb effect
 - **Lv**: Level (0-100) - Overall reverb output level
 - **< Back**: Return to FX Settings menu
@@ -70,12 +71,15 @@ Global reverb parameters that affect the entire reverb unit:
 Global chorus parameters that affect the entire chorus unit:
 - **Dp**: Depth (0-210) - Intensity of the chorus modulation (maps to 0.0-21.0)
 - **Sp**: Speed (1-50) - Modulation rate in Hz (maps to 0.1-5.0 Hz)
+- **SF**: SoundFont Override (ON/OFF) - When ON, per-channel chorus send values completely replace the SoundFont's built-in chorus levels instead of modulating them. Use this if you need to fully silence chorus on specific channels.
 - **Lv**: Level (0-100) - Overall chorus output level (maps to 0.0-10.0)
 - **Vc**: Voices (0-99) - Number of chorus voices
 - **< Back**: Return to FX Settings menu
 - **X Exit**: Return to normal display
 
 **Note**: All FX parameter changes take effect immediately in real-time without requiring a restart. These settings only apply when using SoundFont mode and have no effect on MT-32 mode.
+
+**Understanding SF Override**: SoundFonts contain built-in reverb and chorus send levels for each instrument. By default, the per-channel Rv/Chr values in the FX Settings menu modulate (add to) these built-in levels - setting Rv to 0 doesn't silence reverb if the SoundFont has reverb baked in. Enabling SF Override changes this behavior so that your per-channel send values completely replace the SoundFont's values, giving you full control. This is useful when you want to completely remove reverb or chorus from specific channels.
 
 ### Persistent Settings
 The device now remembers your preferences across reboots:
