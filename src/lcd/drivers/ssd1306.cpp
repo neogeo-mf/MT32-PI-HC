@@ -383,6 +383,13 @@ void CSSD1306::DrawImage(TImage Image, bool bImmediate)
 	if (nImageWidth == m_nWidth && nImageHeight == m_nHeight)
 	{
 		memcpy(pFrameBuffer, pPixelData, nBytes);
+
+		// Add "HobbyChop" text to bottom left for MT32Pi logo
+		if (Image == TImage::MT32PiLogo)
+		{
+			PrintSmall("HobbyChop", 0, 24, false);
+		}
+
 		if (bImmediate)
 			WriteFrameBuffer(true);
 		return;

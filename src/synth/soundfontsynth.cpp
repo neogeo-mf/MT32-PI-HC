@@ -429,6 +429,54 @@ size_t CSoundFontSynth::LoadSoundFontIndex()
 	return 0;
 }
 
+void CSoundFontSynth::SetReverbRoomSize(float fValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_reverb_group_roomsize(m_pSynth, -1, fValue);
+}
+
+void CSoundFontSynth::SetReverbDamping(float fValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_reverb_group_damp(m_pSynth, -1, fValue);
+}
+
+void CSoundFontSynth::SetReverbWidth(float fValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_reverb_group_width(m_pSynth, -1, fValue);
+}
+
+void CSoundFontSynth::SetReverbLevel(float fValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_reverb_group_level(m_pSynth, -1, fValue);
+}
+
+void CSoundFontSynth::SetChorusDepth(float fValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_chorus_group_depth(m_pSynth, -1, fValue);
+}
+
+void CSoundFontSynth::SetChorusSpeed(float fValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_chorus_group_speed(m_pSynth, -1, fValue);
+}
+
+void CSoundFontSynth::SetChorusLevel(float fValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_chorus_group_level(m_pSynth, -1, fValue);
+}
+
+void CSoundFontSynth::SetChorusVoices(int nValue)
+{
+	if (m_pSynth)
+		fluid_synth_set_chorus_group_nr(m_pSynth, -1, nValue);
+}
+
 bool CSoundFontSynth::Reinitialize(const char* pSoundFontPath, const TFXProfile* pFXProfile)
 {
 	const CConfig* const pConfig = CConfig::Get();
