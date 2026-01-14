@@ -173,6 +173,13 @@ void CUserInterface::UpdateWithMenu(CLCD& LCD, CSynthBase& Synth, CMenu& Menu, u
 		m_nStateTime = nTicks;
 	}
 
+	// Notice timeout (shorter duration)
+	else if (m_State == TState::DisplayingNotice && !m_bIsScrolling && nDeltaTicks >= Utility::MillisToTicks(NoticeMessageDisplayTimeMillis))
+	{
+		m_State = TState::None;
+		m_nStateTime = nTicks;
+	}
+
 	// Spinner update
 	else if (m_State == TState::DisplayingSpinnerMessage && !m_bIsScrolling && nDeltaTicks >= Utility::MillisToTicks(SystemMessageSpinnerTimeMillis))
 	{
@@ -216,9 +223,16 @@ void CUserInterface::UpdateWithMenu(CLCD& LCD, CSynthBase& Synth, CMenu& Menu, u
 
 	LCD.Clear(false);
 
-	// Draw menu if active and no system state overrides it
-	if (Menu.IsActive() && !DrawSystemState(LCD))
-		DrawMenu(LCD, Menu);
+	// Draw menu if active - menu takes priority over notices but not other system states
+	if (Menu.IsActive())
+	{
+		// Clear notice state if menu is active (menu takes priority over notices)
+		if (m_State == TState::DisplayingNotice)
+			m_State = TState::None;
+
+		if (!DrawSystemState(LCD))
+			DrawMenu(LCD, Menu);
+	}
 	// Draw synth UI if no drawable system state and menu not active
 	else if (!DrawSystemState(LCD))
 	{
@@ -291,6 +305,15 @@ void CUserInterface::ShowSystemMessage(const char* pMessage, bool bSpinner)
 		m_State = TState::DisplayingMessage;
 	}
 
+	m_nCurrentScrollOffset = 0;
+	m_nStateTime = nTicks;
+}
+
+void CUserInterface::ShowNotice(const char* pMessage)
+{
+	const unsigned nTicks = CTimer::GetClockTicks();
+	snprintf(m_SystemMessageTextBuffer, sizeof(m_SystemMessageTextBuffer), pMessage);
+	m_State = TState::DisplayingNotice;
 	m_nCurrentScrollOffset = 0;
 	m_nStateTime = nTicks;
 }

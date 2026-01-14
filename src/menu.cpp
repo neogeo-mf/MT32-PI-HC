@@ -79,7 +79,8 @@ CMenu::CMenu()
 	  m_nChorusVoices(3),
 	  m_bPendingGlobalFXChange(false),
 	  m_PendingGlobalFXParameter(TGlobalFXParameter::ReverbRoomSize),
-	  m_nPendingGlobalFXValue(0)
+	  m_nPendingGlobalFXValue(0),
+	  m_bSendAllGlobalFX(false)
 {
 	// Initialize toggle loop detection history
 	for (u8 i = 0; i < 5; ++i)
@@ -355,11 +356,11 @@ void CMenu::Select()
 				}
 				else if (m_PresetMenuOption == TPresetMenuOption::Back)
 				{
-					// Go back to animation settings
+					// Go back to animation settings - smart selection: default to Next (where they came from)
 					m_bShowPresetMenu = false;
 					m_bShowAnimSettings = true;
 					m_bEditing = false;
-					m_AnimSettingsOption = TAnimSettingsOption::Mode;
+					m_AnimSettingsOption = TAnimSettingsOption::Next;
 				}
 				else if (m_PresetMenuOption == TPresetMenuOption::Exit)
 				{
@@ -413,17 +414,23 @@ void CMenu::Select()
 
 			case TPresetMenuScreen::PresetList:
 			{
-				// Select preset from list
-				if (m_nPresetCount == 0)
+				// Check if Back or Exit was selected
+				if (m_nPresetListSelection == m_nPresetCount)
 				{
-					// No presets, go back
+					// Back option selected - return to main preset menu
 					m_PresetMenuScreen = TPresetMenuScreen::Main;
 				}
-				else if (m_PresetListOperation == TPresetListOperation::Load)
+				else if (m_nPresetListSelection == m_nPresetCount + 1)
 				{
-					// Load selected preset
-					if (m_nPresetListSelection < m_nPresetCount)
+					// Exit option selected - exit menu entirely
+					ExitMenu();
+				}
+				else if (m_nPresetListSelection < m_nPresetCount)
+				{
+					// Preset selected
+					if (m_PresetListOperation == TPresetListOperation::Load)
 					{
+						// Load selected preset
 						if (LoadPreset(m_PresetNames[m_nPresetListSelection]))
 						{
 							// Success - exit menu to show changes
@@ -431,20 +438,20 @@ void CMenu::Select()
 						}
 						// else: Show error (TODO: add error display)
 					}
-				}
-				else if (m_PresetListOperation == TPresetListOperation::Delete)
-				{
-					// Check if trying to delete DEFAULT
-					if (strcmp(m_PresetNames[m_nPresetListSelection], "DEFAULT") == 0)
+					else if (m_PresetListOperation == TPresetListOperation::Delete)
 					{
-						// Cannot delete DEFAULT - do nothing or show error
-						// For now, just ignore
-					}
-					else
-					{
-						// Go to confirmation screen
-						m_PresetMenuScreen = TPresetMenuScreen::Confirm;
-						m_bConfirmYes = false;  // Default to NO for delete
+						// Check if trying to delete DEFAULT
+						if (strcmp(m_PresetNames[m_nPresetListSelection], "DEFAULT") == 0)
+						{
+							// Cannot delete DEFAULT - do nothing or show error
+							// For now, just ignore
+						}
+						else
+						{
+							// Go to confirmation screen
+							m_PresetMenuScreen = TPresetMenuScreen::Confirm;
+							m_bConfirmYes = false;  // Default to NO for delete
+						}
 					}
 				}
 				break;
@@ -502,9 +509,10 @@ void CMenu::Select()
 		// Handle reverb settings screen
 		if (m_ReverbSettingsOption == TReverbSettingsOption::Back)
 		{
-			// Go back to FX settings
+			// Go back to FX settings - smart selection: default to ReverbSettings button
 			m_bShowReverbSettings = false;
 			m_bEditing = false;
+			m_FXSettingsOption = TFXSettingsOption::ReverbSettings;
 		}
 		else if (m_ReverbSettingsOption == TReverbSettingsOption::Exit)
 		{
@@ -525,9 +533,10 @@ void CMenu::Select()
 		// Handle chorus settings screen
 		if (m_ChorusSettingsOption == TChorusSettingsOption::Back)
 		{
-			// Go back to FX settings
+			// Go back to FX settings - smart selection: default to ChorusSettings button
 			m_bShowChorusSettings = false;
 			m_bEditing = false;
+			m_FXSettingsOption = TFXSettingsOption::ChorusSettings;
 		}
 		else if (m_ChorusSettingsOption == TChorusSettingsOption::Exit)
 		{
@@ -548,31 +557,32 @@ void CMenu::Select()
 		// Handle FX settings screen
 		if (m_FXSettingsOption == TFXSettingsOption::ReverbSettings)
 		{
-			// Go to reverb settings
+			// Go to reverb settings - smart selection: default to Back (to return easily)
 			m_bShowReverbSettings = true;
 			m_bEditing = false;
-			m_ReverbSettingsOption = TReverbSettingsOption::RoomSize;
+			m_ReverbSettingsOption = TReverbSettingsOption::Back;
 		}
 		else if (m_FXSettingsOption == TFXSettingsOption::ChorusSettings)
 		{
-			// Go to chorus settings
+			// Go to chorus settings - smart selection: default to Back (to return easily)
 			m_bShowChorusSettings = true;
 			m_bEditing = false;
-			m_ChorusSettingsOption = TChorusSettingsOption::Depth;
+			m_ChorusSettingsOption = TChorusSettingsOption::Back;
 		}
 		else if (m_FXSettingsOption == TFXSettingsOption::Next)
 		{
-			// Go to animation settings
+			// Go to animation settings - smart selection: default to Next (forward momentum)
 			m_bShowFXSettings = false;
 			m_bShowAnimSettings = true;
 			m_bEditing = false;
-			m_AnimSettingsOption = TAnimSettingsOption::Mode;
+			m_AnimSettingsOption = TAnimSettingsOption::Next;
 		}
 		else if (m_FXSettingsOption == TFXSettingsOption::Back)
 		{
-			// Go back to main menu
+			// Go back to main menu - smart selection: default to Next (where they came from)
 			m_bShowFXSettings = false;
 			m_bEditing = false;
+			m_SelectedOption = TMenuOption::Next;
 		}
 		else if (m_FXSettingsOption == TFXSettingsOption::Exit)
 		{
@@ -593,20 +603,21 @@ void CMenu::Select()
 		// Handle animation settings screen
 		if (m_AnimSettingsOption == TAnimSettingsOption::Next)
 		{
-			// Go to preset menu
+			// Go to preset menu - smart selection: default to Back (no further Next available)
 			m_bShowAnimSettings = false;
 			m_bShowPresetMenu = true;
 			m_bEditing = false;
 			m_PresetMenuScreen = TPresetMenuScreen::Main;
-			m_PresetMenuOption = TPresetMenuOption::Save;
+			m_PresetMenuOption = TPresetMenuOption::Back;
 			LoadPresetList();
 		}
 		else if (m_AnimSettingsOption == TAnimSettingsOption::Back)
 		{
-			// Go back to FX settings
+			// Go back to FX settings - smart selection: default to Next (where they came from)
 			m_bShowAnimSettings = false;
 			m_bShowFXSettings = true;
 			m_bEditing = false;
+			m_FXSettingsOption = TFXSettingsOption::Next;
 		}
 		else if (m_AnimSettingsOption == TAnimSettingsOption::Exit)
 		{
@@ -625,10 +636,10 @@ void CMenu::Select()
 	}
 	else if (m_SelectedOption == TMenuOption::Next)
 	{
-		// Go to FX settings screen
+		// Go to FX settings screen - smart selection: default to Next (forward momentum)
 		m_bShowFXSettings = true;
 		m_bEditing = false;
-		m_FXSettingsOption = TFXSettingsOption::Channel;
+		m_FXSettingsOption = TFXSettingsOption::Next;
 	}
 	else if (m_SelectedOption == TMenuOption::Exit)
 	{
@@ -1268,11 +1279,12 @@ void CMenu::NavigatePresetMenu(s8 nDelta)
 
 		case TPresetMenuScreen::PresetList:
 		{
-			// Navigate preset list
+			// Navigate preset list + Back/Exit options (2 extra entries)
+			u8 nTotalEntries = m_nPresetCount + 2;  // Presets + Back + Exit
 			s16 nNewSelection = m_nPresetListSelection + nDelta;
 			if (nNewSelection < 0)
-				nNewSelection = (m_nPresetCount > 0) ? m_nPresetCount - 1 : 0;
-			else if (nNewSelection >= m_nPresetCount)
+				nNewSelection = (nTotalEntries > 0) ? nTotalEntries - 1 : 0;
+			else if (nNewSelection >= nTotalEntries)
 				nNewSelection = 0;
 			m_nPresetListSelection = static_cast<u8>(nNewSelection);
 
@@ -1345,7 +1357,7 @@ bool CMenu::SavePreset(const char* pName)
 		MIDIPreset Preset;
 	} presetFile;
 
-	presetFile.Version = 2;  // Version 2 format (includes FX settings)
+	presetFile.Version = 3;  // Version 3 format (includes per-channel FX and global FX parameters)
 
 	// Copy preset data
 	strncpy(presetFile.Preset.Name, pName, 12);
@@ -1355,11 +1367,21 @@ bool CMenu::SavePreset(const char* pName)
 	memcpy(presetFile.Preset.ChannelVolume, m_ChannelVolume, sizeof(presetFile.Preset.ChannelVolume));
 	memcpy(presetFile.Preset.ChannelProgram, m_ChannelProgram, sizeof(presetFile.Preset.ChannelProgram));
 
-	// Copy FX settings (new in Version 2)
+	// Copy per-channel FX settings (Version 2+)
 	memcpy(presetFile.Preset.ChannelReverbSend, m_ChannelReverbSend, sizeof(presetFile.Preset.ChannelReverbSend));
 	memcpy(presetFile.Preset.ChannelChorusSend, m_ChannelChorusSend, sizeof(presetFile.Preset.ChannelChorusSend));
 	memcpy(presetFile.Preset.ChannelPan, m_ChannelPan, sizeof(presetFile.Preset.ChannelPan));
 	memcpy(presetFile.Preset.ChannelExpression, m_ChannelExpression, sizeof(presetFile.Preset.ChannelExpression));
+
+	// Copy global FX parameters (new in Version 3)
+	presetFile.Preset.ReverbRoomSize = m_nReverbRoomSize;
+	presetFile.Preset.ReverbDamping = m_nReverbDamping;
+	presetFile.Preset.ReverbWidth = m_nReverbWidth;
+	presetFile.Preset.ReverbLevel = m_nReverbLevel;
+	presetFile.Preset.ChorusDepth = m_nChorusDepth;
+	presetFile.Preset.ChorusSpeed = m_nChorusSpeed;
+	presetFile.Preset.ChorusLevel = m_nChorusLevel;
+	presetFile.Preset.ChorusVoices = m_nChorusVoices;
 
 	FIL file;
 	FRESULT res = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
@@ -1372,7 +1394,7 @@ bool CMenu::SavePreset(const char* pName)
 		res = f_sync(&file);
 	f_close(&file);
 
-	LOGNOTE("Saved preset '%s' (Version 2, %u bytes)", pName, (unsigned int)bytesWritten);
+	LOGNOTE("Saved preset '%s' (Version 3, %u bytes)", pName, (unsigned int)bytesWritten);
 
 	return (res == FR_OK && bytesWritten == sizeof(presetFile));
 }
@@ -1395,15 +1417,16 @@ bool CMenu::LoadPreset(const char* pName)
 	DWORD fileSize = f_size(&file);
 
 	// Calculate expected sizes for each version
-	const DWORD Version1Size = 68;  // Old format (no version byte, no FX)
-	const DWORD Version2Size = 1 + sizeof(MIDIPreset);  // 1 byte version + full preset with FX
+	const DWORD Version1Size = 64;  // Old format (no version byte, no FX): Name[13] + u16 + 3*u8[16] = 64 bytes
+	const DWORD Version2Size = 130;  // Version 2: 1 byte version + 1 padding + base (64) + per-channel FX (64) = 130 bytes
+	const DWORD Version3Size = 138;  // Version 3: 1 byte version + 1 padding + full preset (136) = 138 bytes (struct padding!)
 
 	if (fileSize == Version1Size)
 	{
 		// Version 1 format (old preset without FX settings)
 		LOGNOTE("Loading Version 1 preset '%s'", pName);
 
-		// Read old-format preset (no version byte, 68 bytes)
+		// Read old-format preset (no version byte, 64 bytes)
 		struct {
 			char Name[13];
 			u16 MutedChannels;
@@ -1425,7 +1448,7 @@ bool CMenu::LoadPreset(const char* pName)
 		memcpy(m_ChannelVolume, oldPreset.ChannelVolume, sizeof(m_ChannelVolume));
 		memcpy(m_ChannelProgram, oldPreset.ChannelProgram, sizeof(m_ChannelProgram));
 
-		// Initialize FX settings to defaults (GM standard)
+		// Initialize per-channel FX settings to defaults (GM standard)
 		for (u8 i = 0; i < MIDIChannelCount; ++i)
 		{
 			m_ChannelReverbSend[i] = 40;   // GM default reverb
@@ -1434,17 +1457,74 @@ bool CMenu::LoadPreset(const char* pName)
 			m_ChannelExpression[i] = 127;  // Full expression
 		}
 
+		// Global FX parameters remain unchanged (keep current values)
+
 		// Signal that all programs and FX need to be sent to the synth
 		m_bSendAllPrograms = true;
 		m_bSendAllFX = true;
 
-		LOGNOTE("Loaded Version 1 preset, initialized FX to defaults");
+		LOGNOTE("Loaded Version 1 preset, initialized per-channel FX to defaults");
 		return true;
 	}
 	else if (fileSize == Version2Size)
 	{
-		// Version 2 format (with version byte and FX settings)
+		// Version 2 format (with version byte and per-channel FX settings, no global FX)
 		LOGNOTE("Loading Version 2 preset '%s'", pName);
+
+		// Define Version 2 preset structure (without global FX parameters)
+		struct {
+			char Name[13];
+			u16 MutedChannels;
+			u8 ChannelRoute[16];
+			u8 ChannelVolume[16];
+			u8 ChannelProgram[16];
+			u8 ChannelReverbSend[16];
+			u8 ChannelChorusSend[16];
+			u8 ChannelPan[16];
+			u8 ChannelExpression[16];
+		} v2Preset;
+
+		struct {
+			u8 Version;
+			decltype(v2Preset) Preset;
+		} presetFile;
+
+		UINT bytesRead;
+		res = f_read(&file, &presetFile, sizeof(presetFile), &bytesRead);
+		f_close(&file);
+
+		if (res != FR_OK || bytesRead != sizeof(presetFile))
+			return false;
+
+		if (presetFile.Version != 2)
+		{
+			LOGWARN("Unexpected version %u in Version 2 file", presetFile.Version);
+			return false;
+		}
+
+		// Apply all settings including per-channel FX
+		m_nMutedChannels = presetFile.Preset.MutedChannels;
+		memcpy(m_ChannelRoute, presetFile.Preset.ChannelRoute, sizeof(m_ChannelRoute));
+		memcpy(m_ChannelVolume, presetFile.Preset.ChannelVolume, sizeof(m_ChannelVolume));
+		memcpy(m_ChannelProgram, presetFile.Preset.ChannelProgram, sizeof(m_ChannelProgram));
+		memcpy(m_ChannelReverbSend, presetFile.Preset.ChannelReverbSend, sizeof(m_ChannelReverbSend));
+		memcpy(m_ChannelChorusSend, presetFile.Preset.ChannelChorusSend, sizeof(m_ChannelChorusSend));
+		memcpy(m_ChannelPan, presetFile.Preset.ChannelPan, sizeof(m_ChannelPan));
+		memcpy(m_ChannelExpression, presetFile.Preset.ChannelExpression, sizeof(m_ChannelExpression));
+
+		// Global FX parameters remain unchanged (keep current values)
+
+		// Signal that all programs and FX need to be sent to the synth
+		m_bSendAllPrograms = true;
+		m_bSendAllFX = true;
+
+		LOGNOTE("Loaded Version 2 preset with per-channel FX");
+		return true;
+	}
+	else if (fileSize == Version3Size)
+	{
+		// Version 3 format (with version byte, per-channel FX, and global FX parameters)
+		LOGNOTE("Loading Version 3 preset '%s'", pName);
 
 		struct {
 			u8 Version;
@@ -1458,13 +1538,13 @@ bool CMenu::LoadPreset(const char* pName)
 		if (res != FR_OK || bytesRead != sizeof(presetFile))
 			return false;
 
-		if (presetFile.Version != 2)
+		if (presetFile.Version != 3)
 		{
 			LOGWARN("Unknown preset version %u", presetFile.Version);
 			return false;
 		}
 
-		// Apply all settings including FX
+		// Apply all settings including per-channel and global FX
 		m_nMutedChannels = presetFile.Preset.MutedChannels;
 		memcpy(m_ChannelRoute, presetFile.Preset.ChannelRoute, sizeof(m_ChannelRoute));
 		memcpy(m_ChannelVolume, presetFile.Preset.ChannelVolume, sizeof(m_ChannelVolume));
@@ -1474,19 +1554,30 @@ bool CMenu::LoadPreset(const char* pName)
 		memcpy(m_ChannelPan, presetFile.Preset.ChannelPan, sizeof(m_ChannelPan));
 		memcpy(m_ChannelExpression, presetFile.Preset.ChannelExpression, sizeof(m_ChannelExpression));
 
-		// Signal that all programs and FX need to be sent to the synth
+		// Load global FX parameters (new in Version 3)
+		m_nReverbRoomSize = presetFile.Preset.ReverbRoomSize;
+		m_nReverbDamping = presetFile.Preset.ReverbDamping;
+		m_nReverbWidth = presetFile.Preset.ReverbWidth;
+		m_nReverbLevel = presetFile.Preset.ReverbLevel;
+		m_nChorusDepth = presetFile.Preset.ChorusDepth;
+		m_nChorusSpeed = presetFile.Preset.ChorusSpeed;
+		m_nChorusLevel = presetFile.Preset.ChorusLevel;
+		m_nChorusVoices = presetFile.Preset.ChorusVoices;
+
+		// Signal that all programs, per-channel FX, and global FX need to be sent to the synth
 		m_bSendAllPrograms = true;
 		m_bSendAllFX = true;
+		m_bSendAllGlobalFX = true;  // Trigger all global FX parameters to be sent
 
-		LOGNOTE("Loaded Version 2 preset with FX settings");
+		LOGNOTE("Loaded Version 3 preset with per-channel and global FX");
 		return true;
 	}
 	else
 	{
 		// Unknown file size
 		f_close(&file);
-		LOGWARN("Invalid preset file size: %u bytes (expected %u or %u)",
-		        (unsigned int)fileSize, (unsigned int)Version1Size, (unsigned int)Version2Size);
+		LOGWARN("Invalid preset file size: %u bytes (expected %u, %u, or %u)",
+		        (unsigned int)fileSize, (unsigned int)Version1Size, (unsigned int)Version2Size, (unsigned int)Version3Size);
 		return false;
 	}
 }
@@ -1533,15 +1624,44 @@ void CMenu::LoadPresetList()
 			FIL file;
 			if (f_open(&file, path, FA_READ) == FR_OK)
 			{
-				MIDIPreset preset;
-				UINT bytesRead;
-				if (f_read(&file, &preset, sizeof(MIDIPreset), &bytesRead) == FR_OK && 
-				    bytesRead == sizeof(MIDIPreset))
+				DWORD fileSize = f_size(&file);
+				char presetName[13] = {0};
+				bool bNameLoaded = false;
+
+				// Detect version by file size and read name accordingly
+				if (fileSize == 64)  // Version 1
 				{
-					strncpy(m_PresetNames[m_nPresetCount], preset.Name, 12);
+					// Name is at the start
+					UINT bytesRead;
+					if (f_read(&file, presetName, 13, &bytesRead) == FR_OK && bytesRead == 13)
+						bNameLoaded = true;
+				}
+				else if (fileSize == 130)  // Version 2
+				{
+					// Skip version header (1 byte version + 1 byte padding = 2 bytes), then read name
+					u8 header[2];
+					UINT bytesRead;
+					if (f_read(&file, header, 2, &bytesRead) == FR_OK && bytesRead == 2 &&
+					    f_read(&file, presetName, 13, &bytesRead) == FR_OK && bytesRead == 13)
+						bNameLoaded = true;
+				}
+				else if (fileSize == 138)  // Version 3
+				{
+					// Skip version header (1 byte version + 1 byte padding = 2 bytes), then read name
+					u8 header[2];
+					UINT bytesRead;
+					if (f_read(&file, header, 2, &bytesRead) == FR_OK && bytesRead == 2 &&
+					    f_read(&file, presetName, 13, &bytesRead) == FR_OK && bytesRead == 13)
+						bNameLoaded = true;
+				}
+
+				if (bNameLoaded)
+				{
+					strncpy(m_PresetNames[m_nPresetCount], presetName, 12);
 					m_PresetNames[m_nPresetCount][12] = '\0';
 					m_nPresetCount++;
 				}
+
 				f_close(&file);
 			}
 		}
@@ -1824,31 +1944,47 @@ void CMenu::DrawPresetList(CLCD& LCD) const
 			? "SELECT PRESET:" : "DELETE PRESET:";
 		OLED.PrintSmall(title, 0, y0, false);
 		
-		// Show 2 presets at a time
+		// Show 2 items at a time (presets + Back/Exit options)
+		u8 nTotalEntries = m_nPresetCount + 2;  // Presets + Back + Exit
 		for (u8 i = 0; i < 2; ++i)
 		{
-			u8 presetIndex = m_nPresetListScroll + i;
-			if (presetIndex >= m_nPresetCount)
+			u8 entryIndex = m_nPresetListScroll + i;
+			if (entryIndex >= nTotalEntries)
 				break;
-			
-			bool isSelected = (presetIndex == m_nPresetListSelection);
+
+			bool isSelected = (entryIndex == m_nPresetListSelection);
 			int16_t y = (i == 0) ? y1 : y2;
-			
+
 			if (isSelected)
 				OLED.DrawFilledRect(0, y - 1, 127, y + 8, false);
-			
-			OLED.PrintSmall(m_PresetNames[presetIndex], 2, y, isSelected);
+
+			// Display entry text
+			if (entryIndex < m_nPresetCount)
+			{
+				// Regular preset entry
+				OLED.PrintSmall(m_PresetNames[entryIndex], 2, y, isSelected);
+			}
+			else if (entryIndex == m_nPresetCount)
+			{
+				// Back option
+				OLED.PrintSmall("< Back", 2, y, isSelected);
+			}
+			else if (entryIndex == m_nPresetCount + 1)
+			{
+				// Exit option
+				OLED.PrintSmall("X Exit", 2, y, isSelected);
+			}
 		}
 		
-		// Draw scroll indicator if there are more presets
-		if (m_nPresetCount > 2)
+		// Draw scroll indicator if there are more entries
+		if (nTotalEntries > 2)
 		{
-			// Show which presets are visible (e.g., "1-2/5")
+			// Show which entries are visible (e.g., "1-2/7" for 5 presets + Back + Exit)
 			char scrollInfo[16];
-			snprintf(scrollInfo, sizeof(scrollInfo), "%d-%d/%d", 
-				m_nPresetListScroll + 1, 
-				(m_nPresetListScroll + 2 <= m_nPresetCount) ? m_nPresetListScroll + 2 : m_nPresetCount,
-				m_nPresetCount);
+			snprintf(scrollInfo, sizeof(scrollInfo), "%d-%d/%d",
+				m_nPresetListScroll + 1,
+				(m_nPresetListScroll + 2 <= nTotalEntries) ? m_nPresetListScroll + 2 : nTotalEntries,
+				nTotalEntries);
 			OLED.PrintSmall(scrollInfo, 108, y2, false);
 		}
 	}
@@ -1857,18 +1993,27 @@ void CMenu::DrawPresetList(CLCD& LCD) const
 		// Character LCD
 		char line1[21];
 		char line2[21];
-		
-		if (m_nPresetCount == 0)
+		u8 nTotalEntries = m_nPresetCount + 2;  // Presets + Back + Exit
+
+		if (m_nPresetListSelection < m_nPresetCount)
 		{
-			snprintf(line1, sizeof(line1), "No presets");
-			line2[0] = '\0';
-		}
-		else
-		{
+			// Displaying a preset
 			snprintf(line1, sizeof(line1), "> %.12s", m_PresetNames[m_nPresetListSelection]);
-			snprintf(line2, sizeof(line2), "%d/%d", m_nPresetListSelection + 1, m_nPresetCount);
+			snprintf(line2, sizeof(line2), "%d/%d", m_nPresetListSelection + 1, nTotalEntries);
 		}
-		
+		else if (m_nPresetListSelection == m_nPresetCount)
+		{
+			// Back option
+			snprintf(line1, sizeof(line1), "> Back");
+			snprintf(line2, sizeof(line2), "%d/%d", m_nPresetListSelection + 1, nTotalEntries);
+		}
+		else if (m_nPresetListSelection == m_nPresetCount + 1)
+		{
+			// Exit option
+			snprintf(line1, sizeof(line1), "> Exit");
+			snprintf(line2, sizeof(line2), "%d/%d", m_nPresetListSelection + 1, nTotalEntries);
+		}
+
 		LCD.Print(line1, 0, 0, true);
 		LCD.Print(line2, 0, 1, true);
 	}
