@@ -38,9 +38,11 @@ CMenu::CMenu()
 	: m_bActive(false),
 	  m_bEditing(false),
 	  m_bShowAnimSettings(false),
+	  m_bShowFXSettings(false),
 	  m_bShowPresetMenu(false),
 	  m_nSelectedChannel(0),
 	  m_SelectedOption(TMenuOption::Channel),
+	  m_FXSettingsOption(TFXSettingsOption::Channel),
 	  m_AnimSettingsOption(TAnimSettingsOption::Mode),
 	  m_VisualizationMode(TVisualizationMode::BarGraph),
 	  m_PresetMenuOption(TPresetMenuOption::Save),
@@ -57,7 +59,12 @@ CMenu::CMenu()
 	  m_nMutedChannels(0),
 	  m_bPendingProgramChange(false),
 	  m_nProgramChangeChannel(0),
-	  m_bSendAllPrograms(false)
+	  m_bSendAllPrograms(false),
+	  m_bPendingFXChange(false),
+	  m_nFXChangeChannel(0),
+	  m_nFXChangeCC(0),
+	  m_nFXChangeValue(0),
+	  m_bSendAllFX(false)
 {
 	// Initialize toggle loop detection history
 	for (u8 i = 0; i < 5; ++i)
@@ -69,6 +76,12 @@ CMenu::CMenu()
 		m_ChannelRoute[i] = i;  // No routing by default
 		m_ChannelVolume[i] = DefaultChannelVolume;
 		m_ChannelProgram[i] = 0;  // Default program 0
+
+		// Initialize FX settings to GM defaults
+		m_ChannelReverbSend[i] = 40;   // GM default reverb
+		m_ChannelChorusSend[i] = 0;    // No chorus by default
+		m_ChannelPan[i] = 64;          // Center pan
+		m_ChannelExpression[i] = 127;  // Full expression
 	}
 
 	// Initialize preset name buffer: first char 'A', rest spaces
@@ -86,8 +99,10 @@ void CMenu::EnterMenu()
 	m_bActive = true;
 	m_bEditing = false;
 	m_bShowAnimSettings = false;
+	m_bShowFXSettings = false;
 	m_bShowPresetMenu = false;
 	m_SelectedOption = TMenuOption::Channel;
+	m_FXSettingsOption = TFXSettingsOption::Channel;
 	m_AnimSettingsOption = TAnimSettingsOption::Mode;
 	m_PresetMenuOption = TPresetMenuOption::Save;
 	m_PresetMenuScreen = TPresetMenuScreen::Main;
@@ -98,6 +113,7 @@ void CMenu::ExitMenu()
 	m_bActive = false;
 	m_bEditing = false;
 	m_bShowAnimSettings = false;
+	m_bShowFXSettings = false;
 	m_bShowPresetMenu = false;
 }
 
@@ -196,6 +212,13 @@ void CMenu::Navigate(s8 nDelta)
 			AdjustAnimSettingsValue(nDelta);
 		else
 			NavigateAnimSettings(nDelta);
+	}
+	else if (m_bShowFXSettings)
+	{
+		if (m_bEditing)
+			AdjustFXSettingsValue(nDelta);
+		else
+			NavigateFXSettings(nDelta);
 	}
 	else
 	{
@@ -441,6 +464,37 @@ void CMenu::Select()
 			}
 		}
 	}
+	else if (m_bShowFXSettings)
+	{
+		// Handle FX settings screen
+		if (m_FXSettingsOption == TFXSettingsOption::Next)
+		{
+			// Go to animation settings
+			m_bShowFXSettings = false;
+			m_bShowAnimSettings = true;
+			m_bEditing = false;
+			m_AnimSettingsOption = TAnimSettingsOption::Mode;
+		}
+		else if (m_FXSettingsOption == TFXSettingsOption::Back)
+		{
+			// Go back to main menu
+			m_bShowFXSettings = false;
+			m_bEditing = false;
+		}
+		else if (m_FXSettingsOption == TFXSettingsOption::Exit)
+		{
+			// Exit menu
+			ExitMenu();
+		}
+		else
+		{
+			// Toggle edit mode for current option
+			m_EditToggleHistory[m_nEditToggleIndex] = nCurrentTime;
+			m_nEditToggleIndex = (m_nEditToggleIndex + 1) % 5;
+			m_nLastEditToggleTime = nCurrentTime;
+			m_bEditing = !m_bEditing;
+		}
+	}
 	else if (m_bShowAnimSettings)
 	{
 		// Handle animation settings screen
@@ -456,8 +510,9 @@ void CMenu::Select()
 		}
 		else if (m_AnimSettingsOption == TAnimSettingsOption::Back)
 		{
-			// Go back to main menu
+			// Go back to FX settings
 			m_bShowAnimSettings = false;
+			m_bShowFXSettings = true;
 			m_bEditing = false;
 		}
 		else if (m_AnimSettingsOption == TAnimSettingsOption::Exit)
@@ -477,10 +532,10 @@ void CMenu::Select()
 	}
 	else if (m_SelectedOption == TMenuOption::Next)
 	{
-		// Go to animation settings screen
-		m_bShowAnimSettings = true;
+		// Go to FX settings screen
+		m_bShowFXSettings = true;
 		m_bEditing = false;
-		m_AnimSettingsOption = TAnimSettingsOption::Mode;
+		m_FXSettingsOption = TFXSettingsOption::Channel;
 	}
 	else if (m_SelectedOption == TMenuOption::Exit)
 	{
@@ -616,6 +671,8 @@ void CMenu::Draw(CLCD& LCD) const
 		DrawPresetMenu(LCD);
 	else if (m_bShowAnimSettings)
 		DrawAnimSettings(LCD);
+	else if (m_bShowFXSettings)
+		DrawFXSettings(LCD);
 	else
 		DrawMainMenu(LCD);
 }
@@ -835,7 +892,7 @@ void CMenu::DrawMainMenu(CLCD& LCD) const
 
 			case TMenuOption::Next:
 				snprintf(line1, sizeof(line1), "Next Page");
-				snprintf(line2, sizeof(line2), "Anim settings");
+				snprintf(line2, sizeof(line2), "FX settings");
 				break;
 
 			case TMenuOption::Exit:
@@ -1178,31 +1235,49 @@ bool CMenu::SavePreset(const char* pName)
 {
 	// Create directory if it doesn't exist
 	f_mkdir("SD:/midi-presets");
-	
+
 	char filename[32];
 	SanitizeFileName(filename, pName, sizeof(filename));
-	
+
 	char path[64];
 	snprintf(path, sizeof(path), "SD:/midi-presets/%s.mpr", filename);
-	
-	MIDIPreset preset;
-	strncpy(preset.Name, pName, 12);
-	preset.Name[12] = '\0';
-	preset.MutedChannels = m_nMutedChannels;
-	memcpy(preset.ChannelRoute, m_ChannelRoute, sizeof(preset.ChannelRoute));
-	memcpy(preset.ChannelVolume, m_ChannelVolume, sizeof(preset.ChannelVolume));
-	memcpy(preset.ChannelProgram, m_ChannelProgram, sizeof(preset.ChannelProgram));
-	
+
+	// Create preset file structure with version header
+	struct {
+		u8 Version;
+		MIDIPreset Preset;
+	} presetFile;
+
+	presetFile.Version = 2;  // Version 2 format (includes FX settings)
+
+	// Copy preset data
+	strncpy(presetFile.Preset.Name, pName, 12);
+	presetFile.Preset.Name[12] = '\0';
+	presetFile.Preset.MutedChannels = m_nMutedChannels;
+	memcpy(presetFile.Preset.ChannelRoute, m_ChannelRoute, sizeof(presetFile.Preset.ChannelRoute));
+	memcpy(presetFile.Preset.ChannelVolume, m_ChannelVolume, sizeof(presetFile.Preset.ChannelVolume));
+	memcpy(presetFile.Preset.ChannelProgram, m_ChannelProgram, sizeof(presetFile.Preset.ChannelProgram));
+
+	// Copy FX settings (new in Version 2)
+	memcpy(presetFile.Preset.ChannelReverbSend, m_ChannelReverbSend, sizeof(presetFile.Preset.ChannelReverbSend));
+	memcpy(presetFile.Preset.ChannelChorusSend, m_ChannelChorusSend, sizeof(presetFile.Preset.ChannelChorusSend));
+	memcpy(presetFile.Preset.ChannelPan, m_ChannelPan, sizeof(presetFile.Preset.ChannelPan));
+	memcpy(presetFile.Preset.ChannelExpression, m_ChannelExpression, sizeof(presetFile.Preset.ChannelExpression));
+
 	FIL file;
 	FRESULT res = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
 	if (res != FR_OK)
 		return false;
-	
+
 	UINT bytesWritten;
-	res = f_write(&file, &preset, sizeof(MIDIPreset), &bytesWritten);
+	res = f_write(&file, &presetFile, sizeof(presetFile), &bytesWritten);
+	if (res == FR_OK)
+		res = f_sync(&file);
 	f_close(&file);
-	
-	return (res == FR_OK && bytesWritten == sizeof(MIDIPreset));
+
+	LOGNOTE("Saved preset '%s' (Version 2, %u bytes)", pName, (unsigned int)bytesWritten);
+
+	return (res == FR_OK && bytesWritten == sizeof(presetFile));
 }
 
 // Load preset from file
@@ -1210,33 +1285,113 @@ bool CMenu::LoadPreset(const char* pName)
 {
 	char filename[32];
 	SanitizeFileName(filename, pName, sizeof(filename));
-	
+
 	char path[64];
 	snprintf(path, sizeof(path), "SD:/midi-presets/%s.mpr", filename);
-	
+
 	FIL file;
 	FRESULT res = f_open(&file, path, FA_READ);
 	if (res != FR_OK)
 		return false;
-	
-	MIDIPreset preset;
-	UINT bytesRead;
-	res = f_read(&file, &preset, sizeof(MIDIPreset), &bytesRead);
-	f_close(&file);
-	
-	if (res != FR_OK || bytesRead != sizeof(MIDIPreset))
+
+	// Get file size to determine version
+	DWORD fileSize = f_size(&file);
+
+	// Calculate expected sizes for each version
+	const DWORD Version1Size = 68;  // Old format (no version byte, no FX)
+	const DWORD Version2Size = 1 + sizeof(MIDIPreset);  // 1 byte version + full preset with FX
+
+	if (fileSize == Version1Size)
+	{
+		// Version 1 format (old preset without FX settings)
+		LOGNOTE("Loading Version 1 preset '%s'", pName);
+
+		// Read old-format preset (no version byte, 68 bytes)
+		struct {
+			char Name[13];
+			u16 MutedChannels;
+			u8 ChannelRoute[16];
+			u8 ChannelVolume[16];
+			u8 ChannelProgram[16];
+		} oldPreset;
+
+		UINT bytesRead;
+		res = f_read(&file, &oldPreset, sizeof(oldPreset), &bytesRead);
+		f_close(&file);
+
+		if (res != FR_OK || bytesRead != sizeof(oldPreset))
+			return false;
+
+		// Apply old settings
+		m_nMutedChannels = oldPreset.MutedChannels;
+		memcpy(m_ChannelRoute, oldPreset.ChannelRoute, sizeof(m_ChannelRoute));
+		memcpy(m_ChannelVolume, oldPreset.ChannelVolume, sizeof(m_ChannelVolume));
+		memcpy(m_ChannelProgram, oldPreset.ChannelProgram, sizeof(m_ChannelProgram));
+
+		// Initialize FX settings to defaults (GM standard)
+		for (u8 i = 0; i < MIDIChannelCount; ++i)
+		{
+			m_ChannelReverbSend[i] = 40;   // GM default reverb
+			m_ChannelChorusSend[i] = 0;    // No chorus by default
+			m_ChannelPan[i] = 64;          // Center pan
+			m_ChannelExpression[i] = 127;  // Full expression
+		}
+
+		// Signal that all programs and FX need to be sent to the synth
+		m_bSendAllPrograms = true;
+		m_bSendAllFX = true;
+
+		LOGNOTE("Loaded Version 1 preset, initialized FX to defaults");
+		return true;
+	}
+	else if (fileSize == Version2Size)
+	{
+		// Version 2 format (with version byte and FX settings)
+		LOGNOTE("Loading Version 2 preset '%s'", pName);
+
+		struct {
+			u8 Version;
+			MIDIPreset Preset;
+		} presetFile;
+
+		UINT bytesRead;
+		res = f_read(&file, &presetFile, sizeof(presetFile), &bytesRead);
+		f_close(&file);
+
+		if (res != FR_OK || bytesRead != sizeof(presetFile))
+			return false;
+
+		if (presetFile.Version != 2)
+		{
+			LOGWARN("Unknown preset version %u", presetFile.Version);
+			return false;
+		}
+
+		// Apply all settings including FX
+		m_nMutedChannels = presetFile.Preset.MutedChannels;
+		memcpy(m_ChannelRoute, presetFile.Preset.ChannelRoute, sizeof(m_ChannelRoute));
+		memcpy(m_ChannelVolume, presetFile.Preset.ChannelVolume, sizeof(m_ChannelVolume));
+		memcpy(m_ChannelProgram, presetFile.Preset.ChannelProgram, sizeof(m_ChannelProgram));
+		memcpy(m_ChannelReverbSend, presetFile.Preset.ChannelReverbSend, sizeof(m_ChannelReverbSend));
+		memcpy(m_ChannelChorusSend, presetFile.Preset.ChannelChorusSend, sizeof(m_ChannelChorusSend));
+		memcpy(m_ChannelPan, presetFile.Preset.ChannelPan, sizeof(m_ChannelPan));
+		memcpy(m_ChannelExpression, presetFile.Preset.ChannelExpression, sizeof(m_ChannelExpression));
+
+		// Signal that all programs and FX need to be sent to the synth
+		m_bSendAllPrograms = true;
+		m_bSendAllFX = true;
+
+		LOGNOTE("Loaded Version 2 preset with FX settings");
+		return true;
+	}
+	else
+	{
+		// Unknown file size
+		f_close(&file);
+		LOGWARN("Invalid preset file size: %u bytes (expected %u or %u)",
+		        (unsigned int)fileSize, (unsigned int)Version1Size, (unsigned int)Version2Size);
 		return false;
-	
-	// Apply preset settings
-	m_nMutedChannels = preset.MutedChannels;
-	memcpy(m_ChannelRoute, preset.ChannelRoute, sizeof(m_ChannelRoute));
-	memcpy(m_ChannelVolume, preset.ChannelVolume, sizeof(m_ChannelVolume));
-	memcpy(m_ChannelProgram, preset.ChannelProgram, sizeof(m_ChannelProgram));
-
-	// Signal that all programs need to be sent to the synth
-	m_bSendAllPrograms = true;
-
-	return true;
+	}
 }
 
 // Delete preset file
@@ -1674,3 +1829,356 @@ void CMenu::DrawConfirmation(CLCD& LCD) const
 	}
 }
 
+// FX Settings - Read access
+u8 CMenu::GetChannelReverbSend(u8 nChannel) const
+{
+	return (nChannel < MIDIChannelCount) ? m_ChannelReverbSend[nChannel] : 40;
+}
+
+u8 CMenu::GetChannelChorusSend(u8 nChannel) const
+{
+	return (nChannel < MIDIChannelCount) ? m_ChannelChorusSend[nChannel] : 0;
+}
+
+u8 CMenu::GetChannelPan(u8 nChannel) const
+{
+	return (nChannel < MIDIChannelCount) ? m_ChannelPan[nChannel] : 64;
+}
+
+u8 CMenu::GetChannelExpression(u8 nChannel) const
+{
+	return (nChannel < MIDIChannelCount) ? m_ChannelExpression[nChannel] : 127;
+}
+
+void CMenu::NavigateFXSettings(s8 nDelta)
+{
+	s8 nOption = static_cast<s8>(m_FXSettingsOption) + nDelta;
+	if (nOption < 0)
+		nOption = static_cast<s8>(TFXSettingsOption::Count) - 1;
+	else if (nOption >= static_cast<s8>(TFXSettingsOption::Count))
+		nOption = 0;
+	m_FXSettingsOption = static_cast<TFXSettingsOption>(nOption);
+}
+
+void CMenu::AdjustFXSettingsValue(s8 nDelta)
+{
+	if (m_FXSettingsOption == TFXSettingsOption::Channel)
+	{
+		// Change selected channel
+		s8 nChannel = static_cast<s8>(m_nSelectedChannel) + nDelta;
+		if (nChannel < 0)
+			nChannel = MIDIChannelCount - 1;
+		else if (nChannel >= MIDIChannelCount)
+			nChannel = 0;
+		m_nSelectedChannel = static_cast<u8>(nChannel);
+	}
+	else if (m_FXSettingsOption == TFXSettingsOption::Reverb)
+	{
+		// Adjust reverb send (0-127)
+		s16 nValue = static_cast<s16>(m_ChannelReverbSend[m_nSelectedChannel]) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 127)
+			nValue = 127;
+		m_ChannelReverbSend[m_nSelectedChannel] = static_cast<u8>(nValue);
+
+		// Send MIDI CC 91
+		m_bPendingFXChange = true;
+		m_nFXChangeChannel = m_nSelectedChannel;
+		m_nFXChangeCC = 91;
+		m_nFXChangeValue = static_cast<u8>(nValue);
+	}
+	else if (m_FXSettingsOption == TFXSettingsOption::Chorus)
+	{
+		// Adjust chorus send (0-127)
+		s16 nValue = static_cast<s16>(m_ChannelChorusSend[m_nSelectedChannel]) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 127)
+			nValue = 127;
+		m_ChannelChorusSend[m_nSelectedChannel] = static_cast<u8>(nValue);
+
+		// Send MIDI CC 93
+		m_bPendingFXChange = true;
+		m_nFXChangeChannel = m_nSelectedChannel;
+		m_nFXChangeCC = 93;
+		m_nFXChangeValue = static_cast<u8>(nValue);
+	}
+	else if (m_FXSettingsOption == TFXSettingsOption::Pan)
+	{
+		// Adjust pan (0=left, 64=center, 127=right)
+		// Reverse delta so turning right decreases value (pans right feels natural)
+		s16 nValue = static_cast<s16>(m_ChannelPan[m_nSelectedChannel]) - nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 127)
+			nValue = 127;
+		m_ChannelPan[m_nSelectedChannel] = static_cast<u8>(nValue);
+
+		// Send MIDI CC 10
+		m_bPendingFXChange = true;
+		m_nFXChangeChannel = m_nSelectedChannel;
+		m_nFXChangeCC = 10;
+		m_nFXChangeValue = static_cast<u8>(nValue);
+	}
+	else if (m_FXSettingsOption == TFXSettingsOption::Expression)
+	{
+		// Adjust expression (0-127)
+		s16 nValue = static_cast<s16>(m_ChannelExpression[m_nSelectedChannel]) + nDelta;
+		if (nValue < 0)
+			nValue = 0;
+		else if (nValue > 127)
+			nValue = 127;
+		m_ChannelExpression[m_nSelectedChannel] = static_cast<u8>(nValue);
+
+		// Send MIDI CC 11
+		m_bPendingFXChange = true;
+		m_nFXChangeChannel = m_nSelectedChannel;
+		m_nFXChangeCC = 11;
+		m_nFXChangeValue = static_cast<u8>(nValue);
+	}
+}
+
+void CMenu::DrawFXSettings(CLCD& LCD) const
+{
+	const bool bGraphical = (LCD.GetType() == CLCD::TType::Graphical);
+
+	if (bGraphical)
+	{
+		// OLED Display - 3 row layout
+		// Row 0 (y=0):  "FX SETTINGS" title
+		// Row 1 (y=11): "Ch:" + channel + "Rv:" + reverb + "Ch:" + chorus
+		// Row 2 (y=21): "Pn:" + pan + visual pan indicator + "Ex:" + expression + buttons
+
+		CSSD1306& OLED = static_cast<CSSD1306&>(LCD);
+
+		const u8 y0 = 0;
+		const u8 y1 = 11;
+		const u8 y2 = 21;
+
+		// Row 0: Title
+		OLED.PrintSmall("FX SETTINGS", 0, y0, false);
+
+		// Get current channel values
+		u8 nReverb = m_ChannelReverbSend[m_nSelectedChannel];
+		u8 nChorus = m_ChannelChorusSend[m_nSelectedChannel];
+		u8 nPan = m_ChannelPan[m_nSelectedChannel];
+		u8 nExpression = m_ChannelExpression[m_nSelectedChannel];
+
+		// Row 1: Channel, Reverb, Chorus
+		bool channelSelected = (m_FXSettingsOption == TFXSettingsOption::Channel);
+		bool reverbSelected = (m_FXSettingsOption == TFXSettingsOption::Reverb);
+		bool chorusSelected = (m_FXSettingsOption == TFXSettingsOption::Chorus);
+
+		// Channel label and value
+		const u8 channelLabelX = 0;
+		const u8 channelValueX = 18;
+		OLED.PrintSmall("Ch:", channelLabelX, y1, false);
+		char chStr[4];
+		snprintf(chStr, sizeof(chStr), "%2d", m_nSelectedChannel + 1);
+
+		if (channelSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(channelValueX, y1, channelValueX + 11, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(channelValueX, y1 - 1, channelValueX + 11, y1 - 1, false);
+				OLED.DrawFilledRect(channelValueX, y1 + 8, channelValueX + 11, y1 + 8, false);
+				OLED.DrawFilledRect(channelValueX, y1 - 1, channelValueX, y1 + 8, false);
+				OLED.DrawFilledRect(channelValueX + 11, y1 - 1, channelValueX + 11, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(chStr, channelValueX, y1, channelSelected && m_bEditing);
+
+		// Reverb label and value
+		const u8 reverbLabelX = 36;
+		const u8 reverbValueX = 54;
+		OLED.PrintSmall("Rv:", reverbLabelX, y1, false);
+		char rvStr[4];
+		snprintf(rvStr, sizeof(rvStr), "%3d", nReverb);
+
+		if (reverbSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(reverbValueX, y1, reverbValueX + 17, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(reverbValueX, y1 - 1, reverbValueX + 17, y1 - 1, false);
+				OLED.DrawFilledRect(reverbValueX, y1 + 8, reverbValueX + 17, y1 + 8, false);
+				OLED.DrawFilledRect(reverbValueX, y1 - 1, reverbValueX, y1 + 8, false);
+				OLED.DrawFilledRect(reverbValueX + 17, y1 - 1, reverbValueX + 17, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(rvStr, reverbValueX, y1, reverbSelected && m_bEditing);
+
+		// Chorus label and value
+		const u8 chorusLabelX = 74;
+		const u8 chorusValueX = 98;
+		OLED.PrintSmall("Ch:", chorusLabelX, y1, false);
+		char chsStr[4];
+		snprintf(chsStr, sizeof(chsStr), "%3d", nChorus);
+
+		if (chorusSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(chorusValueX, y1, chorusValueX + 17, y1 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(chorusValueX, y1 - 1, chorusValueX + 17, y1 - 1, false);
+				OLED.DrawFilledRect(chorusValueX, y1 + 8, chorusValueX + 17, y1 + 8, false);
+				OLED.DrawFilledRect(chorusValueX, y1 - 1, chorusValueX, y1 + 8, false);
+				OLED.DrawFilledRect(chorusValueX + 17, y1 - 1, chorusValueX + 17, y1 + 8, false);
+			}
+		}
+		OLED.PrintSmall(chsStr, chorusValueX, y1, chorusSelected && m_bEditing);
+
+		// Row 2: Pan with visual indicator, Expression, buttons
+		bool panSelected = (m_FXSettingsOption == TFXSettingsOption::Pan);
+		bool expressionSelected = (m_FXSettingsOption == TFXSettingsOption::Expression);
+		bool nextSelected = (m_FXSettingsOption == TFXSettingsOption::Next);
+		bool backSelected = (m_FXSettingsOption == TFXSettingsOption::Back);
+		bool exitSelected = (m_FXSettingsOption == TFXSettingsOption::Exit);
+
+		// Pan label and value
+		const u8 panLabelX = 0;
+		const u8 panValueX = 18;
+		OLED.PrintSmall("Pn:", panLabelX, y2, false);
+		char panStr[4];
+		snprintf(panStr, sizeof(panStr), "%3d", nPan);
+
+		if (panSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(panValueX, y2, panValueX + 17, y2 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(panValueX, y2 - 1, panValueX + 17, y2 - 1, false);
+				OLED.DrawFilledRect(panValueX, y2 + 8, panValueX + 17, y2 + 8, false);
+				OLED.DrawFilledRect(panValueX, y2 - 1, panValueX, y2 + 8, false);
+				OLED.DrawFilledRect(panValueX + 17, y2 - 1, panValueX + 17, y2 + 8, false);
+			}
+		}
+		OLED.PrintSmall(panStr, panValueX, y2, panSelected && m_bEditing);
+
+		// Expression label and value
+		const u8 exprLabelX = 42;
+		const u8 exprValueX = 60;
+		OLED.PrintSmall("Ex:", exprLabelX, y2, false);
+		char exStr[4];
+		snprintf(exStr, sizeof(exStr), "%3d", nExpression);
+
+		if (expressionSelected)
+		{
+			if (m_bEditing)
+			{
+				OLED.DrawFilledRect(exprValueX, y2, exprValueX + 17, y2 + 7, false);
+			}
+			else
+			{
+				OLED.DrawFilledRect(exprValueX, y2 - 1, exprValueX + 17, y2 - 1, false);
+				OLED.DrawFilledRect(exprValueX, y2 + 8, exprValueX + 17, y2 + 8, false);
+				OLED.DrawFilledRect(exprValueX, y2 - 1, exprValueX, y2 + 8, false);
+				OLED.DrawFilledRect(exprValueX + 17, y2 - 1, exprValueX + 17, y2 + 8, false);
+			}
+		}
+		OLED.PrintSmall(exStr, exprValueX, y2, expressionSelected && m_bEditing);
+
+		// Buttons - draw with selection highlighting matching other menus
+		const u8 backX = 84;
+		const u8 nextX = 98;
+		const u8 exitX = 112;
+
+		// BACK button (<)
+		if (backSelected)
+			OLED.DrawFilledRect(backX, y2 - 1, backX + 12 - 1, y2 + 8, false);
+		OLED.PrintSmall("<", backX + 2, y2, backSelected);
+
+		// NEXT button (>)
+		if (nextSelected)
+			OLED.DrawFilledRect(nextX, y2 - 1, nextX + 12 - 1, y2 + 8, false);
+		OLED.PrintSmall(">", nextX + 2, y2, nextSelected);
+
+		// EXIT button (X)
+		if (exitSelected)
+			OLED.DrawFilledRect(exitX, y2 - 1, exitX + 12 - 1, y2 + 8, false);
+		OLED.PrintSmall("X", exitX + 2, y2, exitSelected);
+	}
+	else
+	{
+		// Character LCD - 2 line display
+		char line1[21];
+		char line2[21];
+
+		// Get values
+		u8 nReverb = m_ChannelReverbSend[m_nSelectedChannel];
+		u8 nChorus = m_ChannelChorusSend[m_nSelectedChannel];
+		u8 nPan = m_ChannelPan[m_nSelectedChannel];
+		u8 nExpression = m_ChannelExpression[m_nSelectedChannel];
+
+		switch (m_FXSettingsOption)
+		{
+			case TFXSettingsOption::Channel:
+				snprintf(line1, sizeof(line1), "FX Ch%d", m_nSelectedChannel + 1);
+				snprintf(line2, sizeof(line2), "Select channel");
+				break;
+
+			case TFXSettingsOption::Reverb:
+				snprintf(line1, sizeof(line1), "Reverb Ch%d", m_nSelectedChannel + 1);
+				snprintf(line2, sizeof(line2), "%d", nReverb);
+				break;
+
+			case TFXSettingsOption::Chorus:
+				snprintf(line1, sizeof(line1), "Chorus Ch%d", m_nSelectedChannel + 1);
+				snprintf(line2, sizeof(line2), "%d", nChorus);
+				break;
+
+			case TFXSettingsOption::Pan:
+				snprintf(line1, sizeof(line1), "Pan Ch%d", m_nSelectedChannel + 1);
+				// Show L-C-R indicator
+				if (nPan < 56)
+					snprintf(line2, sizeof(line2), "L %d", nPan);
+				else if (nPan > 72)
+					snprintf(line2, sizeof(line2), "R %d", nPan);
+				else
+					snprintf(line2, sizeof(line2), "C %d", nPan);
+				break;
+
+			case TFXSettingsOption::Expression:
+				snprintf(line1, sizeof(line1), "Expression Ch%d", m_nSelectedChannel + 1);
+				snprintf(line2, sizeof(line2), "%d", nExpression);
+				break;
+
+			case TFXSettingsOption::Next:
+				snprintf(line1, sizeof(line1), "Next Page");
+				snprintf(line2, sizeof(line2), "Anim settings");
+				break;
+
+			case TFXSettingsOption::Back:
+				snprintf(line1, sizeof(line1), "Back");
+				snprintf(line2, sizeof(line2), "Main menu");
+				break;
+
+			case TFXSettingsOption::Exit:
+				snprintf(line1, sizeof(line1), "Exit Menu");
+				line2[0] = '\0';
+				break;
+
+			default:
+				snprintf(line1, sizeof(line1), "FX Settings");
+				line2[0] = '\0';
+				break;
+		}
+
+		LCD.Print(line1, 0, 0, true);
+		LCD.Print(line2, 0, 1, true);
+	}
+}

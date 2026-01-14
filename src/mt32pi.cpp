@@ -561,6 +561,52 @@ void CMT32Pi::UITask()
 			m_Menu.ClearSendAllPrograms();
 		}
 
+		// Check if an FX change needs to be sent from the menu
+		if (m_Menu.HasPendingFXChange())
+		{
+			const u8 nChannel = m_Menu.GetPendingFXChangeChannel();
+			const u8 nCC = m_Menu.GetPendingFXChangeCC();
+			const u8 nValue = m_Menu.GetPendingFXChangeValue();
+
+			// Send MIDI Control Change message (0xB0 + channel, CC, value)
+			const u32 nCCMessage = 0xB0 | nChannel | (nCC << 8) | (nValue << 16);
+			if (m_pCurrentSynth)
+				m_pCurrentSynth->HandleMIDIShortMessage(nCCMessage);
+
+			m_Menu.ClearPendingFXChange();
+		}
+
+		// Check if all FX settings need to be sent (e.g., after loading a preset)
+		if (m_Menu.NeedsAllFXSent())
+		{
+			if (m_pCurrentSynth)
+			{
+				for (u8 nChannel = 0; nChannel < 16; ++nChannel)
+				{
+					// Send reverb (CC 91)
+					u8 nReverb = m_Menu.GetChannelReverbSend(nChannel);
+					u32 nMsg = 0xB0 | nChannel | (91 << 8) | (nReverb << 16);
+					m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+
+					// Send chorus (CC 93)
+					u8 nChorus = m_Menu.GetChannelChorusSend(nChannel);
+					nMsg = 0xB0 | nChannel | (93 << 8) | (nChorus << 16);
+					m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+
+					// Send pan (CC 10)
+					u8 nPan = m_Menu.GetChannelPan(nChannel);
+					nMsg = 0xB0 | nChannel | (10 << 8) | (nPan << 16);
+					m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+
+					// Send expression (CC 11)
+					u8 nExpression = m_Menu.GetChannelExpression(nChannel);
+					nMsg = 0xB0 | nChannel | (11 << 8) | (nExpression << 16);
+					m_pCurrentSynth->HandleMIDIShortMessage(nMsg);
+				}
+			}
+			m_Menu.ClearSendAllFX();
+		}
+
 		// Poll MiSTer interface
 		if (bMisterEnabled && (nTicks - m_nMisterUpdateTime) >= Utility::MillisToTicks(MisterUpdatePeriodMillis))
 		{

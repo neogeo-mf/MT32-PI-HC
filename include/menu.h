@@ -53,11 +53,24 @@ public:
 		Count
 	};
 
+	enum class TFXSettingsOption
+	{
+		Channel,    // Select which channel (1-16)
+		Reverb,     // Reverb send level (CC 91)
+		Chorus,     // Chorus send level (CC 93)
+		Pan,        // Pan position (CC 10)
+		Expression, // Expression level (CC 11)
+		Back,       // Go back to main menu
+		Next,       // Go to animation settings
+		Exit,       // Exit menu
+		Count
+	};
+
 	enum class TAnimSettingsOption
 	{
 		Mode,       // Select visualization mode
-		Next,       // Go to preset menu
 		Back,       // Go back to main menu
+		Next,       // Go to preset menu
 		Exit,       // Exit menu
 		Count
 	};
@@ -103,6 +116,10 @@ public:
 		u8 ChannelRoute[16];
 		u8 ChannelVolume[16];
 		u8 ChannelProgram[16];          // Program/patch number per channel (0-127)
+		u8 ChannelReverbSend[16];       // Reverb send level (CC 91, 0-127)
+		u8 ChannelChorusSend[16];       // Chorus send level (CC 93, 0-127)
+		u8 ChannelPan[16];              // Pan position (CC 10, 0-127, 64=center)
+		u8 ChannelExpression[16];       // Expression level (CC 11, 0-127)
 	};
 
 	CMenu();
@@ -131,12 +148,27 @@ public:
 	u8 GetChannelVolume(u8 nChannel) const;
 	u8 GetChannelProgram(u8 nChannel) const;
 
+	// FX settings - read access
+	u8 GetChannelReverbSend(u8 nChannel) const;
+	u8 GetChannelChorusSend(u8 nChannel) const;
+	u8 GetChannelPan(u8 nChannel) const;
+	u8 GetChannelExpression(u8 nChannel) const;
+
 	// Program change notification
 	bool HasPendingProgramChange() const { return m_bPendingProgramChange; }
 	u8 GetPendingProgramChangeChannel() const { return m_nProgramChangeChannel; }
 	void ClearPendingProgramChange() { m_bPendingProgramChange = false; }
 	bool NeedsAllProgramsSent() const { return m_bSendAllPrograms; }
 	void ClearSendAllPrograms() { m_bSendAllPrograms = false; }
+
+	// FX change notification
+	bool HasPendingFXChange() const { return m_bPendingFXChange; }
+	u8 GetPendingFXChangeChannel() const { return m_nFXChangeChannel; }
+	u8 GetPendingFXChangeCC() const { return m_nFXChangeCC; }
+	u8 GetPendingFXChangeValue() const { return m_nFXChangeValue; }
+	void ClearPendingFXChange() { m_bPendingFXChange = false; }
+	bool NeedsAllFXSent() const { return m_bSendAllFX; }
+	void ClearSendAllFX() { m_bSendAllFX = false; }
 
 private:
 	static constexpr u8 MIDIChannelCount = 16;
@@ -145,9 +177,11 @@ private:
 	bool m_bActive;
 	bool m_bEditing;            // True when actively editing a value
 	bool m_bShowAnimSettings;   // True when showing animation settings screen
+	bool m_bShowFXSettings;     // True when showing FX settings screen
 	bool m_bShowPresetMenu;     // True when showing preset menu
 	u8 m_nSelectedChannel;      // 0-15
 	TMenuOption m_SelectedOption;
+	TFXSettingsOption m_FXSettingsOption;
 	TAnimSettingsOption m_AnimSettingsOption;
 	TVisualizationMode m_VisualizationMode;
 	TPresetMenuOption m_PresetMenuOption;
@@ -174,17 +208,33 @@ private:
 	u8 m_ChannelVolume[MIDIChannelCount];
 	u8 m_ChannelProgram[MIDIChannelCount];  // Program/patch per channel (0-127)
 
+	// Per-channel FX settings
+	u8 m_ChannelReverbSend[MIDIChannelCount];   // CC 91 (0-127)
+	u8 m_ChannelChorusSend[MIDIChannelCount];   // CC 93 (0-127)
+	u8 m_ChannelPan[MIDIChannelCount];          // CC 10 (0-127, 64=center)
+	u8 m_ChannelExpression[MIDIChannelCount];   // CC 11 (0-127)
+
 	// Program change tracking
 	bool m_bPendingProgramChange;
 	u8 m_nProgramChangeChannel;
 	bool m_bSendAllPrograms;
 
+	// FX change tracking
+	bool m_bPendingFXChange;
+	u8 m_nFXChangeChannel;
+	u8 m_nFXChangeCC;
+	u8 m_nFXChangeValue;
+	bool m_bSendAllFX;
+
 	void NavigateOptions(s8 nDelta);
+	void NavigateFXSettings(s8 nDelta);
 	void NavigateAnimSettings(s8 nDelta);
 	void NavigatePresetMenu(s8 nDelta);
 	void AdjustValue(s8 nDelta);
+	void AdjustFXSettingsValue(s8 nDelta);
 	void AdjustAnimSettingsValue(s8 nDelta);
 	void DrawMainMenu(CLCD& LCD) const;
+	void DrawFXSettings(CLCD& LCD) const;
 	void DrawAnimSettings(CLCD& LCD) const;
 	void DrawPresetMenu(CLCD& LCD) const;
 	void DrawPresetMainMenu(CLCD& LCD) const;
