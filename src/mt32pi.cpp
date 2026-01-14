@@ -653,6 +653,28 @@ void CMT32Pi::UITask()
 			m_Menu.ClearPendingGlobalFXChange();
 		}
 
+		// Check if all global FX parameters need to be sent (e.g., after loading preset)
+		if (m_Menu.NeedsAllGlobalFXSent())
+		{
+			if (m_pCurrentSynth == m_pSoundFontSynth)
+			{
+				// Send all global reverb parameters
+				m_pSoundFontSynth->SetReverbRoomSize(m_Menu.GetReverbRoomSize() / 100.0f);
+				m_pSoundFontSynth->SetReverbDamping(m_Menu.GetReverbDamping() / 100.0f);
+				m_pSoundFontSynth->SetReverbWidth(m_Menu.GetReverbWidth());
+				m_pSoundFontSynth->SetReverbLevel(m_Menu.GetReverbLevel() / 100.0f);
+
+				// Send all global chorus parameters
+				m_pSoundFontSynth->SetChorusDepth(m_Menu.GetChorusDepth() / 10.0f);
+				m_pSoundFontSynth->SetChorusSpeed(m_Menu.GetChorusSpeed() / 10.0f);
+				m_pSoundFontSynth->SetChorusLevel(m_Menu.GetChorusLevel() / 10.0f);
+				m_pSoundFontSynth->SetChorusVoices(m_Menu.GetChorusVoices());
+
+				LOGNOTE("Sent all global FX parameters from preset");
+			}
+			m_Menu.ClearSendAllGlobalFX();
+		}
+
 		// Poll MiSTer interface
 		if (bMisterEnabled && (nTicks - m_nMisterUpdateTime) >= Utility::MillisToTicks(MisterUpdatePeriodMillis))
 		{
@@ -1432,7 +1454,12 @@ void CMT32Pi::SetMasterVolume(s32 nVolume)
 		m_pSoundFontSynth->SetMasterVolume(m_nMasterVolume);
 
 	if (m_pCurrentSynth == m_pSoundFontSynth)
-		LCDLog(TLCDLogType::Notice, "Volume: %d", m_nMasterVolume);
+	{
+		// Use ShowNotice for volume - shorter display time and menu can override
+		char Buffer[32];
+		snprintf(Buffer, sizeof(Buffer), "Volume: %d", m_nMasterVolume);
+		m_UserInterface.ShowNotice(Buffer);
+	}
 }
 
 void CMT32Pi::LEDOn()

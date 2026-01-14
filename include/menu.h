@@ -144,6 +144,15 @@ public:
 		u8 ChannelChorusSend[16];       // Chorus send level (CC 93, 0-127)
 		u8 ChannelPan[16];              // Pan position (CC 10, 0-127, 64=center)
 		u8 ChannelExpression[16];       // Expression level (CC 11, 0-127)
+		// Global FX parameters (new in Version 3)
+		u8 ReverbRoomSize;              // 0-100 (maps to 0.0-1.0)
+		u8 ReverbDamping;               // 0-100 (maps to 0.0-1.0)
+		u8 ReverbWidth;                 // 0-100 (maps to 0.0-100.0)
+		u8 ReverbLevel;                 // 0-100 (maps to 0.0-1.0)
+		u8 ChorusDepth;                 // 0-210 (maps to 0.0-21.0, divide by 10)
+		u8 ChorusSpeed;                 // 1-50 (maps to 0.1-5.0 Hz, divide by 10)
+		u8 ChorusLevel;                 // 0-100 (maps to 0.0-10.0, divide by 10)
+		u8 ChorusVoices;                // 0-99 (direct mapping)
 	};
 
 	CMenu();
@@ -220,6 +229,8 @@ public:
 	TGlobalFXParameter GetPendingGlobalFXParameter() const { return m_PendingGlobalFXParameter; }
 	u8 GetPendingGlobalFXValue() const { return m_nPendingGlobalFXValue; }
 	void ClearPendingGlobalFXChange() { m_bPendingGlobalFXChange = false; }
+	bool NeedsAllGlobalFXSent() const { return m_bSendAllGlobalFX; }
+	void ClearSendAllGlobalFX() { m_bSendAllGlobalFX = false; }
 
 private:
 	static constexpr u8 MIDIChannelCount = 16;
@@ -295,6 +306,7 @@ private:
 	bool m_bPendingGlobalFXChange;
 	TGlobalFXParameter m_PendingGlobalFXParameter;
 	u8 m_nPendingGlobalFXValue;
+	bool m_bSendAllGlobalFX;
 
 	void NavigateOptions(s8 nDelta);
 	void NavigateFXSettings(s8 nDelta);

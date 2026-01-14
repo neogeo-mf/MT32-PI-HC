@@ -50,6 +50,7 @@ public:
 	void ShowCuteFaceAnimation(CLCD& LCD);
 	void ShowAnimationFrame(CLCD& LCD, unsigned int nTicks);
 	void ShowSystemMessage(const char* pMessage, bool bSpinner = false);
+	void ShowNotice(const char* pMessage);  // Lower priority, shorter display, menu can override
 	void ClearSpinnerMessage();
 	void DisplayImage(TImage Image);
 	void ShowSysExText(TSysExDisplayMessage Type, const u8* pMessage, size_t nSize, u8 nOffset);
@@ -68,6 +69,7 @@ private:
 	{
 		None,
 		DisplayingMessage,
+		DisplayingNotice,        // Lower priority notice (volume, etc.) - menu can override
 		DisplayingSpinnerMessage,
 		DisplayingImage,
 		DisplayingSysExText,
@@ -90,6 +92,7 @@ private:
 	static constexpr size_t SysExPixelBufferSize = 64;
 
 	static constexpr unsigned SystemMessageDisplayTimeMillis = 3000;
+	static constexpr unsigned NoticeMessageDisplayTimeMillis = 1000;  // Shorter display for volume/notices
 	static constexpr unsigned SystemMessageSpinnerTimeMillis = 32;
 	static constexpr unsigned SC55DisplayTimeMillis = 3000;
 
