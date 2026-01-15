@@ -16,7 +16,7 @@
 
 ---
 
-## New features 0.25.0
+## New features
 
 ### MIDI Channel Settings Menu
 Press the encoder knob to access the MIDI channel settings menu where you can:
