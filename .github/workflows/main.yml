@@ -1,0 +1,30 @@
+name: Build MT32-PI-HC BulkyMIDI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu make
+
+      - name: Build firmware
+        run: |
+          make clean
+          make
+
+      - name: Upload kernel8.img
+        uses: actions/upload-artifact@v4
+        with:
+          name: mt32pi-bulkymidi-build
+          path: kernel8.img
