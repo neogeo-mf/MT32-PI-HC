@@ -10,17 +10,22 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential git cmake make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-arm-none-eabi
 
-      - name: Init submodules
+      - name: Fetch external dependencies
         run: |
-          make submodules
+          mkdir -p external
+          git clone --depth 1 https://github.com/smuehlst/circle-stdlib external/circle-stdlib
+          git clone --depth 1 https://github.com/munt/munt.git external/munt
+          git clone --depth 1 https://github.com/benhoyt/inih.git external/inih
+          git clone --depth 1 https://github.com/FluidSynth/fluidsynth.git external/fluidsynth
+
+          git -C external/circle-stdlib submodule update --init --depth 1 libs/circle libs/circle-newlib
+          git -C external/circle-stdlib/libs/circle submodule update --init --depth 1 addon/wlan/hostap
 
       - name: Build firmware
         run: |
