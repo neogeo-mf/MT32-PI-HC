@@ -16,12 +16,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu make
+          sudo apt install -y build-essential git cmake make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-arm-none-eabi
+
+      - name: Init submodules
+        run: |
+          make submodules
 
       - name: Build firmware
         run: |
-          export CIRCLEHOME=$GITHUB_WORKSPACE
-          make clean
+          make clean || true
           make
 
       - name: Upload kernel8.img
